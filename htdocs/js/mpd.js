@@ -334,9 +334,11 @@ function webSocketConnect() {
                                 }
                                 $('#salamisandwich > tbody').append(
                                     "<tr uri=\"" + encodeURI(obj.data[item].dir) + "\" class=\"" + clazz + "\">" +
-                                    "<td><span class=\"glyphicon glyphicon-folder-open\"></span></td>" +
-                                    "<td colspan=\"2\"><a>" + basename(obj.data[item].dir) + "</a></td>" +
-                                    "<td></td><td></td></tr>"
+                                    "<td></td>" +
+                                    "<td style=\"text-align: center;\"><span class=\"glyphicon glyphicon-folder-open\" style=\"color: var(--ctp-peach);\"></span></td>" +
+                                    "<td colspan=\"3\"><a>" + basename(obj.data[item].dir) + "</a></td>" +
+                                    "<td class=\"text-right\"><span class=\"badge-playing\" style=\"background: rgba(250, 179, 135, 0.2); color: var(--ctp-peach);\">KLASÖR</span></td>" +
+                                    "<td></td></tr>"
                                 );
                                 break;
                             case 'playlist':
@@ -346,9 +348,11 @@ function webSocketConnect() {
                                 }
                                 $('#salamisandwich > tbody').append(
                                     "<tr uri=\"" + encodeURI(obj.data[item].plist) + "\" class=\"" + clazz + "\">" +
-                                    "<td><span class=\"glyphicon glyphicon-list\"></span></td>" +
-                                    "<td colspan=\"2\"><a>" + basename(obj.data[item].plist) + "</a></td>" +
-                                    "<td></td><td></td></tr>"
+                                    "<td></td>" +
+                                    "<td style=\"text-align: center;\"><span class=\"glyphicon glyphicon-list\" style=\"color: var(--ctp-mauve);\"></span></td>" +
+                                    "<td colspan=\"3\"><a>" + basename(obj.data[item].plist) + "</a></td>" +
+                                    "<td class=\"text-right\"><span class=\"badge-selected\">LISTE</span></td>" +
+                                    "<td></td></tr>"
                                 );
                                 break;
                             case 'song':
@@ -356,16 +360,18 @@ function webSocketConnect() {
                                 var seconds = obj.data[item].duration - minutes * 60;
 
                                 if (typeof obj.data[item].artist === 'undefined') {
-                                    var details = "<td colspan=\"2\">" + obj.data[item].title + "</td>";
+                                    var details = "<td colspan=\"3\">" + obj.data[item].title + "</td>";
                                 } else {
-                                    var details = "<td>" + obj.data[item].artist + "<br /><span>" + obj.data[item].album + "</span></td><td>" + obj.data[item].title + "</td>";
+                                    var details = "<td>" + obj.data[item].title + "</td><td class=\"song-artist\">" + obj.data[item].artist + "</td><td class=\"song-album\">" + obj.data[item].album + "</td>";
                                 }
 
-				$('#salamisandwich > tbody').append(
+                                $('#salamisandwich > tbody').append(
                                     "<tr uri=\"" + encodeURI(obj.data[item].uri) + "\" class=\"song\">" +
-                                    "<td><span class=\"glyphicon glyphicon-music\"></span></td>" + details +
-                                    "<td>" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds +
-                                    "</td><td></td></tr>"
+                                    "<td></td>" +
+                                    "<td style=\"text-align: center;\"><span class=\"glyphicon glyphicon-music\" style=\"color: var(--ctp-green);\"></span></td>" +
+                                    details +
+                                    "<td class=\"text-right font-mono\">" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds + "</td>" +
+                                    "<td></td></tr>"
                                 );
                                 break;
                             case 'wrap':
@@ -417,30 +423,29 @@ function webSocketConnect() {
                         });
                     };
                     $('#salamisandwich > tbody > tr').on({
-                        click: function() {
-                            switch($(this).attr('class')) {
-                                case 'dir':
-                                    pagination = 0;
-                                    browsepath = $(this).attr("uri");
-                                    $("#browse > a").attr("href", '#/browse/'+pagination+'/'+browsepath);
+                        click: function(e) {
+                            var $tr = $(this);
+                            if ($tr.hasClass('dir')) {
+                                pagination = 0;
+                                browsepath = $tr.attr("uri");
+                                $("#browse > a").attr("href", '#/browse/'+pagination+'/'+browsepath);
+                                if (window.app) {
                                     app.setLocation('#/browse/'+pagination+'/'+browsepath);
-                                    break;
-                                case 'song':
-                                    socket.send("MPD_API_ADD_TRACK," + decodeURI($(this).attr("uri")));
-                                    $('.top-right').notify({
-                                        message:{
-                                            text: "\"" + $('td:nth-last-child(3)', this).text() + "\" added"
-                                        }
-                                    }).show();
-                                    break;
-                                case 'plist':
-                                    socket.send("MPD_API_ADD_PLAYLIST," + decodeURI($(this).attr("uri")));
-                                    $('.top-right').notify({
-                                        message:{
-                                            text: "\"" + $('td:nth-last-child(3)', this).text() + "\" added"
-                                        }
-                                    }).show();
-                                    break;
+                                }
+                            } else if ($tr.hasClass('song')) {
+                                socket.send("MPD_API_ADD_TRACK," + decodeURI($tr.attr("uri")));
+                                $('.top-right').notify({
+                                    message:{
+                                        text: "\"" + $('td:nth-last-child(3)', $tr).text() + "\" added"
+                                    }
+                                }).show();
+                            } else if ($tr.hasClass('plist')) {
+                                socket.send("MPD_API_ADD_PLAYLIST," + decodeURI($tr.attr("uri")));
+                                $('.top-right').notify({
+                                    message:{
+                                        text: "\"" + $('td:nth-last-child(3)', $tr).text() + "\" added"
+                                    }
+                                }).show();
                             }
                         }
                     });

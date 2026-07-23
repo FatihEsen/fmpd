@@ -629,6 +629,23 @@ body {
 }
 
 /* Modals & Backdrop */
+.modal {
+  display: none !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  z-index: 3000 !important;
+  overflow: hidden !important;
+  outline: 0 !important;
+}
+
+.modal.in,
+.modal.show {
+  display: block !important;
+}
+
 .modal-backdrop {
   background-color: var(--ctp-crust) !important;
   opacity: 0.8 !important;
