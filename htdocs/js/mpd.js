@@ -460,8 +460,10 @@ function webSocketConnect() {
                     var elapsed_seconds = obj.data.elapsedTime - elapsed_minutes * 60;
 
                     $('#volumeslider').slider(obj.data.volume);
+                    $('#volume-text').text((obj.data.volume !== undefined ? obj.data.volume : 0) + '%');
                     var progress = Math.floor(100*obj.data.elapsedTime/obj.data.totalTime);
                     $('#progressbar').slider(progress);
+                    $('.progress-fill').css('width', (isNaN(progress) ? 0 : progress) + '%');
 
                     $('#counter')
                     .text(elapsed_minutes + ":" + 
@@ -661,21 +663,15 @@ var updateVolumeIcon = function(volume)
 
 var updatePlayIcon = function(state)
 {
-    $("#play-icon").removeClass("glyphicon-play")
-    .removeClass("glyphicon-pause");
-    $('#track-icon').removeClass("glyphicon-play")
-    .removeClass("glyphicon-pause")
-    .removeClass("glyphicon-stop");
-
     if(state == 1) { // stop
-        $("#play-icon").addClass("glyphicon-play");
-        $('#track-icon').addClass("glyphicon-stop");
+        $("#play-icon").text('▶').addClass("glyphicon-play").removeClass("glyphicon-pause");
+        $('#vinyl-disk').removeClass('spinning');
     } else if(state == 2) { // pause
-        $("#play-icon").addClass("glyphicon-pause");
-        $('#track-icon').addClass("glyphicon-play");
+        $("#play-icon").text('▶').addClass("glyphicon-play").removeClass("glyphicon-pause");
+        $('#vinyl-disk').removeClass('spinning');
     } else { // play
-        $("#play-icon").addClass("glyphicon-play");
-        $('#track-icon').addClass("glyphicon-pause");
+        $("#play-icon").text('⏸').addClass("glyphicon-pause").removeClass("glyphicon-play");
+        $('#vinyl-disk').addClass('spinning');
     }
 }
 
