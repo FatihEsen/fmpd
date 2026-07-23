@@ -108,6 +108,39 @@ body {
   font-weight: 600;
 }
 
+/* Navigation Tabs in Header */
+.nav-tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+.nav-tab-pill {
+  color: var(--ctp-subtext0) !important;
+  text-decoration: none !important;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border-radius: 16px;
+  background-color: var(--ctp-surface0);
+  border: 1px solid var(--ctp-surface1);
+  transition: all 0.15s ease;
+}
+
+.nav-tab-pill:hover {
+  color: var(--ctp-text) !important;
+  background-color: var(--ctp-surface1);
+  border-color: var(--ctp-mauve);
+}
+
+.nav-tab-pill.active {
+  background-color: var(--ctp-mauve) !important;
+  color: var(--ctp-crust) !important;
+  font-weight: 700 !important;
+  border-color: var(--ctp-mauve) !important;
+}
+
 .header-center {
   flex: 0 1 420px;
 }

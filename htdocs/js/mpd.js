@@ -40,18 +40,19 @@ var app = $.sammy(function() {
 
         $('#breadcrump').addClass('hide');
         $('#filter').addClass('hide');
+        $('#add-all-songs').addClass('hide');
+        $('#nav-queue').addClass('active');
+        $('#panel-title').text("📻 Çalma Listesi Sırası");
         $('#salamisandwich').removeClass('ytm-browse-grid-mode').removeClass('hide').find("tr:gt(0)").remove();
         $('#dirble_panel').addClass('hide');
         socket.send('MPD_API_GET_QUEUE,'+pagination);
-
-        $('#panel-heading').text("Queue");
-        $('#queue').addClass('active');
     }
 
     function prepare() {
+        $('.nav-tab-pill').removeClass('active');
         $('#nav_links > li').removeClass('active');
         $('.page-btn').addClass('hide');
-        $('#add-all-songs').hide();
+        $('#add-all-songs').addClass('hide');
         pagination = 0;
         browsepath = '';
     }
@@ -67,6 +68,8 @@ var app = $.sammy(function() {
         browsepath = this.params['splat'][1];
         pagination = parseInt(this.params['splat'][0]);
         current_app = 'browse';
+        $('#nav-browse').addClass('active');
+        $('#panel-title').text("📁 Müzik Kütüphanesi");
         $('#breadcrump').removeClass('hide').empty().append("<li><a href=\"#/browse/0/\" onclick=\"set_filter()\">root</a></li>");
         $('#filter').removeClass('hide');
         $('#salamisandwich').addClass('ytm-browse-grid-mode').removeClass('hide').find("tr:gt(0)").remove();
@@ -79,7 +82,7 @@ var app = $.sammy(function() {
             add_all_songs.on('click', function() {
                 socket.send('MPD_API_ADD_TRACK,'+browsepath);
             });
-            add_all_songs.show();
+            add_all_songs.removeClass('hide').show();
         }
 
         $('#panel-heading').text("Browse database: "+browsepath);
