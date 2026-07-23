@@ -628,30 +628,93 @@ body {
   vertical-align: middle;
 }
 
-/* Modals */
+/* Modals & Backdrop */
+.modal-backdrop {
+  background-color: var(--ctp-crust) !important;
+  opacity: 0.8 !important;
+}
+
+.modal-dialog {
+  margin: 60px auto !important;
+}
+
 .modal-content {
   background-color: var(--ctp-base) !important;
-  border: 1px solid var(--ctp-surface0) !important;
+  border: 1px solid var(--ctp-surface1) !important;
   border-radius: var(--ghibli-radius) !important;
   color: var(--ctp-text) !important;
   font-family: var(--font-family) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
 }
 
 .modal-header {
   border-bottom: 1px solid var(--ctp-surface0) !important;
+  padding: 18px 24px !important;
 }
 
-.modal-footer {
-  border-top: 1px solid var(--ctp-surface0) !important;
+.modal-header .close {
+  color: var(--ctp-subtext0) !important;
+  opacity: 0.8 !important;
+  font-size: 24px !important;
+  text-shadow: none !important;
+  margin-top: -4px !important;
+}
+
+.modal-header .close:hover {
+  color: var(--ctp-red) !important;
+  opacity: 1 !important;
 }
 
 .modal-title {
   color: var(--ctp-mauve) !important;
-  font-weight: 700;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
 }
 
-/* Responsive Grid for Library Browse View */
-.ytm-browse-grid-mode > tbody {
+.modal-body {
+  padding: 20px 24px !important;
+  background-color: var(--ctp-base) !important;
+}
+
+.modal-body label {
+  color: var(--ctp-rosewater) !important;
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+  font-size: 0.9rem !important;
+}
+
+.modal-body .form-control {
+  background-color: var(--ctp-surface0) !important;
+  border: 1px solid var(--ctp-surface1) !important;
+  color: var(--ctp-text) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  font-size: 0.92rem !important;
+  font-family: var(--font-family) !important;
+}
+
+.modal-body .form-control:focus {
+  border-color: var(--ctp-mauve) !important;
+  box-shadow: 0 0 0 2px rgba(203, 166, 247, 0.25) !important;
+  outline: none !important;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--ctp-surface0) !important;
+  padding: 14px 24px !important;
+  background-color: var(--ctp-mantle) !important;
+  border-bottom-left-radius: var(--ghibli-radius) !important;
+  border-bottom-right-radius: var(--ghibli-radius) !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+}
+
+.notifications.top-right {
+  right: 15px;
+  top: 70px;
+}.ytm-browse-grid-mode > tbody {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;

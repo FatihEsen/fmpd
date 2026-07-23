@@ -15,16 +15,16 @@
   <!-- Top Navigation Header -->
   <header class="app-header">
     <div class="header-left">
-      <a class="brand-title" href="#/">
+      <a class="brand-title" href="#/" onclick="if(window.app) { app.setLocation('#/'); } return false;">
         <span>ympd</span>
         <span class="version-badge">Catppuccin Ghibli Edition</span>
       </a>
 
       <!-- Navigation Tabs: Queue, Media Library, Radio -->
       <nav class="nav-tabs-container">
-        <a id="nav-queue" class="nav-tab-pill active" href="#/">📻 Sıra</a>
-        <a id="nav-browse" class="nav-tab-pill" href="#/browse/0/">📁 Müzik Kütüphanesi</a>
-        <a id="nav-dirble" class="nav-tab-pill hide" href="#/dirble/">📻 Radyolar</a>
+        <a id="nav-queue" class="nav-tab-pill active" href="#/" onclick="if(window.app) { app.setLocation('#/'); } return false;">📻 Sıra</a>
+        <a id="nav-browse" class="nav-tab-pill" href="#/browse/0/" onclick="if(window.app) { app.setLocation('#/browse/0/'); } return false;">📁 Müzik Kütüphanesi</a>
+        <a id="nav-dirble" class="nav-tab-pill hide" href="#/dirble/" onclick="if(window.app) { app.setLocation('#/dirble/'); } return false;">📻 Radyolar</a>
       </nav>
     </div>
 
@@ -183,7 +183,7 @@
 
   <!-- Modals -->
   <div class="modal fade" id="shortcutModal" tabindex="-1" role="dialog" aria-labelledby="shortcutModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
@@ -296,10 +296,10 @@
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h1 style="color: var(--ctp-mauve);">Aranıyor...</h1>
+          <h1 style="color: var(--ctp-mauve); font-size: 1.5rem; margin: 0;">Aranıyor...</h1>
         </div>
         <div class="modal-body">
-          <div class="progress progress-striped active">
+          <div class="progress progress-striped active" style="margin-bottom: 0;">
             <div class="progress-bar" role="progressbar" style="width: 100%; background-color: var(--ctp-mauve);">
               <span class="sr-only">Lütfen Bekleyin</span>
             </div>
