@@ -40,7 +40,7 @@ var app = $.sammy(function() {
 
         $('#breadcrump').addClass('hide');
         $('#filter').addClass('hide');
-        $('#salamisandwich').removeClass('hide').find("tr:gt(0)").remove();
+        $('#salamisandwich').removeClass('ytm-browse-grid-mode').removeClass('hide').find("tr:gt(0)").remove();
         $('#dirble_panel').addClass('hide');
         socket.send('MPD_API_GET_QUEUE,'+pagination);
 
@@ -69,7 +69,7 @@ var app = $.sammy(function() {
         current_app = 'browse';
         $('#breadcrump').removeClass('hide').empty().append("<li><a href=\"#/browse/0/\" onclick=\"set_filter()\">root</a></li>");
         $('#filter').removeClass('hide');
-        $('#salamisandwich').removeClass('hide').find("tr:gt(0)").remove();
+        $('#salamisandwich').addClass('ytm-browse-grid-mode').removeClass('hide').find("tr:gt(0)").remove();
         $('#dirble_panel').addClass('hide');
         socket.send('MPD_API_GET_BROWSE,'+pagination+','+(browsepath ? browsepath : "/"));
         // Don't add all songs from root
@@ -228,7 +228,9 @@ function webSocketConnect() {
                         var seconds = obj.data[song].duration - minutes * 60;
 
                         $('#salamisandwich > tbody').append(
-                            "<tr trackid=\"" + obj.data[song].id + "\"><td>" + (obj.data[song].pos + 1) + "</td>" +
+                            "<tr trackid=\"" + obj.data[song].id + "\">" +
+                                "<td style=\"text-align: center;\" onclick=\"event.stopPropagation();\"><input type=\"checkbox\" class=\"track-checkbox\" value=\"" + obj.data[song].id + "\" onclick=\"updateBatchToolbar()\"></td>" +
+                                "<td>" + (obj.data[song].pos + 1) + "</td>" +
                                 "<td>" + obj.data[song].artist + "<br /><span>" + obj.data[song].album  + "</span></td>" +
                                 "<td>" + obj.data[song].title  + "</td>" +
                                 "<td>" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds +
@@ -274,10 +276,14 @@ function webSocketConnect() {
 
                     $('#salamisandwich > tbody > tr').on({
                         click: function() {
-                            $('#salamisandwich > tbody > tr').removeClass('active');
+                            $('#salamisandwich > tbody > tr').removeClass('active').removeClass('selected');
                             socket.send('MPD_API_PLAY_TRACK,'+$(this).attr('trackid'));
-                            $(this).addClass('active');
+                            $(this).addClass('active').addClass('selected');
                         },
+                        mouseenter: function() {
+                            $('#salamisandwich > tbody > tr').removeClass('highlighted');
+                            $(this).addClass('highlighted');
+                        }
                     });
                     //Helper function to keep table row from collapsing when being sorted
                     var fixHelperModified = function(e, tr) {
@@ -446,6 +452,7 @@ function webSocketConnect() {
 
                     current_song.totalTime  = obj.data.totalTime;
                     current_song.currentSongId = obj.data.currentsongid;
+                    current_song.songpos = obj.data.songpos;
                     var total_minutes = Math.floor(obj.data.totalTime / 60);
                     var total_seconds = obj.data.totalTime - total_minutes * 60;
 
@@ -462,7 +469,12 @@ function webSocketConnect() {
                         total_minutes + ":" + (total_seconds < 10 ? '0' : '') + total_seconds);
 
                     $('#salamisandwich > tbody > tr').removeClass('active').css("font-weight", "");
-                    $('#salamisandwich > tbody > tr[trackid='+obj.data.currentsongid+']').addClass('active').css("font-weight", "bold");
+                    $('#salamisandwich > tbody > tr .eq-container').remove();
+                    var activeTr = $('#salamisandwich > tbody > tr[trackid='+obj.data.currentsongid+']');
+                    activeTr.addClass('active').css("font-weight", "bold");
+                    if (activeTr.length && !activeTr.find('.eq-container').length) {
+                        activeTr.find('td:first-child').html('<div class="eq-container"><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div></div>');
+                    }
 
                     if(obj.data.random)
                         $('#btnrandom').addClass("active")
@@ -1110,3 +1122,347 @@ function add_filter () {
 
     $('#filter').append('&nbsp;<a onclick="set_filter(\'||\')" href="#/browse/0/" class="glyphicon glyphicon-list"></a>');
 }
+
+function toggleSelectAllTracks(master) {
+    $('.track-checkbox').prop('checked', $(master).is(':checked'));
+    updateBatchToolbar();
+}
+
+function updateBatchToolbar() {
+    var checkedCount = $('.track-checkbox:checked').length;
+    if (checkedCount > 0) {
+        $('#batch-count-badge').text(checkedCount + ' selected');
+        $('#batch-count-indicator').removeClass('hide');
+        $('#btn-batch-queue-next, #btn-batch-delete').removeClass('disabled').prop('disabled', false);
+    } else {
+        $('#batch-count-indicator').addClass('hide');
+        $('#btn-batch-queue-next, #btn-batch-delete').addClass('disabled').prop('disabled', true);
+        $('#select-all-tracks').prop('checked', false);
+    }
+}
+
+function queueNextBatch() {
+    var checked = $('.track-checkbox:checked');
+    if (!checked.length) {
+        queueNextSingle();
+        return;
+    }
+
+    var currentPos = (current_song && current_song.songpos !== undefined && current_song.songpos >= 0) ? current_song.songpos : 0;
+
+    checked.each(function(index, el) {
+        var songId = parseInt($(el).val(), 10);
+        if (!isNaN(songId)) {
+            var targetPos = currentPos + index;
+            var payload = JSON.stringify({
+                "cmd": "move_next",
+                "song_id": songId,
+                "current_pos": targetPos
+            });
+            if (typeof socket !== 'undefined' && socket && socket.readyState === 1) {
+                socket.send(payload);
+            }
+        }
+    });
+
+    $('.track-checkbox, #select-all-tracks').prop('checked', false);
+    updateBatchToolbar();
+}
+
+function deleteBatch() {
+    var checked = $('.track-checkbox:checked');
+    if (!checked.length) return;
+
+    checked.each(function(index, el) {
+        var songId = parseInt($(el).val(), 10);
+        if (!isNaN(songId) && typeof socket !== 'undefined') {
+            socket.send('MPD_API_RM_TRACK,' + songId);
+        }
+    });
+
+    $('.track-checkbox, #select-all-tracks').prop('checked', false);
+    updateBatchToolbar();
+}
+
+function queueNextSingle() {
+    var selectedRow = $('#salamisandwich > tbody > tr.selected');
+    if (!selectedRow.length) {
+        selectedRow = $('#salamisandwich > tbody > tr.highlighted');
+    }
+    if (!selectedRow.length) {
+        selectedRow = $('#salamisandwich > tbody > tr:hover');
+    }
+    if (!selectedRow.length) {
+        selectedRow = $('#salamisandwich > tbody > tr.active');
+    }
+    if (!selectedRow.length) {
+        return;
+    }
+
+    var songId = parseInt(selectedRow.attr('trackid'), 10);
+    if (isNaN(songId)) {
+        return;
+    }
+
+    var currentPos = 0;
+    if (current_song && current_song.songpos !== undefined && current_song.songpos >= 0) {
+        currentPos = current_song.songpos;
+    } else {
+        var activeRow = $('#salamisandwich > tbody > tr.active');
+        if (activeRow.length) {
+            currentPos = activeRow.index();
+        }
+    }
+
+    var payload = JSON.stringify({
+        "cmd": "move_next",
+        "song_id": songId,
+        "current_pos": currentPos
+    });
+
+    if (typeof socket !== 'undefined' && socket && socket.readyState === 1) {
+        socket.send(payload);
+    }
+}
+
+function queueNext() {
+    if ($('.track-checkbox:checked').length > 0) {
+        queueNextBatch();
+    } else {
+        queueNextSingle();
+    }
+}
+
+function toggleSidebar() {
+    $('.ytm-sidebar').toggleClass('open');
+    $('.ytm-sidebar-overlay').toggleClass('open');
+}
+
+function closeSidebar() {
+    $('.ytm-sidebar').removeClass('open');
+    $('.ytm-sidebar-overlay').removeClass('open');
+}
+
+window.queueNext = queueNext;
+window.queueNextBatch = queueNextBatch;
+window.deleteBatch = deleteBatch;
+window.toggleSelectAllTracks = toggleSelectAllTracks;
+window.updateBatchToolbar = updateBatchToolbar;
+window.toggleSidebar = toggleSidebar;
+window.closeSidebar = closeSidebar;
+
+// Auto-close mobile sidebar when clicking any menu item inside sidebar
+$(document).on('click', '.ytm-sidebar a, .ytm-sidebar button', function() {
+    if ($(window).width() < 992) {
+        closeSidebar();
+    }
+});
+
+$(document).on('keydown', function(event) {
+    var target = event.target;
+    var isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+    if (event.key === 'Escape') {
+        closeSidebar();
+        if (isInput) {
+            $(target).blur();
+        }
+        return;
+    }
+
+    if (isInput) {
+        return;
+    }
+
+    var key = event.key;
+
+    if (key === '/') {
+        event.preventDefault();
+        $('#search input').focus();
+        return;
+    }
+
+    if (key === '?') {
+        $('#shortcutModal').modal('toggle');
+        return;
+    }
+
+    if (key === 'j' || key === 'J' || key === 'ArrowDown') {
+        event.preventDefault();
+        var rows = $('#salamisandwich > tbody > tr');
+        if (!rows.length) return;
+        var selected = rows.filter('.selected');
+        var next;
+        if (!selected.length) {
+            next = rows.first();
+        } else {
+            next = selected.next('tr');
+            if (!next.length) next = selected;
+        }
+        rows.removeClass('selected');
+        next.addClass('selected');
+        if (next[0] && next[0].scrollIntoView) {
+            next[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+        return;
+    }
+
+    if (key === 'k' || key === 'K' || key === 'ArrowUp') {
+        event.preventDefault();
+        var rows = $('#salamisandwich > tbody > tr');
+        if (!rows.length) return;
+        var selected = rows.filter('.selected');
+        var prev;
+        if (!selected.length) {
+            prev = rows.last();
+        } else {
+            prev = selected.prev('tr');
+            if (!prev.length) prev = selected;
+        }
+        rows.removeClass('selected');
+        prev.addClass('selected');
+        if (prev[0] && prev[0].scrollIntoView) {
+            prev[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+        return;
+    }
+
+    if (key === 'Enter') {
+        var selectedRow = $('#salamisandwich > tbody > tr.selected');
+        if (selectedRow.length) {
+            var trackId = selectedRow.attr('trackid');
+            if (trackId && typeof socket !== 'undefined') {
+                $('#salamisandwich > tbody > tr').removeClass('active');
+                selectedRow.addClass('active');
+                socket.send('MPD_API_PLAY_TRACK,' + trackId);
+            }
+        }
+        return;
+    }
+
+    if (key === 'ö' || key === 'Ö') {
+        queueNext();
+        return;
+    }
+
+    if (key === 'd' || key === 'D' || key === 'Delete' || key === 'Backspace') {
+        var selectedRow = $('#salamisandwich > tbody > tr.selected');
+        if (selectedRow.length) {
+            var trackId = selectedRow.attr('trackid');
+            if (trackId && typeof socket !== 'undefined') {
+                socket.send('MPD_API_RM_TRACK,' + trackId);
+            }
+        }
+        return;
+    }
+
+    if (key === ' ' || key === 'Spacebar') {
+        event.preventDefault();
+        if (typeof clickPlay === 'function') {
+            clickPlay();
+        }
+        return;
+    }
+
+    if (key === 'n' || key === 'N') {
+        if (typeof socket !== 'undefined') {
+            socket.send('MPD_API_SET_NEXT');
+        }
+        return;
+    }
+
+    if (key === 'b' || key === 'B') {
+        if (typeof socket !== 'undefined') {
+            socket.send('MPD_API_SET_PREV');
+        }
+        return;
+    }
+
+    // '+' or '=' -> Volume Up (+5)
+    if (key === '+' || key === '=') {
+        event.preventDefault();
+        var curVol = $('#volumeslider').slider('getValue');
+        var newVol = Math.min(100, (curVol || 0) + 5);
+        if (typeof socket !== 'undefined') {
+            socket.send('MPD_API_SET_VOLUME,' + newVol);
+        }
+        return;
+    }
+
+    // '-' -> Volume Down (-5)
+    if (key === '-') {
+        event.preventDefault();
+        var curVol = $('#volumeslider').slider('getValue');
+        var newVol = Math.max(0, (curVol || 0) - 5);
+        if (typeof socket !== 'undefined') {
+            socket.send('MPD_API_SET_VOLUME,' + newVol);
+        }
+        return;
+    }
+
+    // 'm' or 'M' -> Mute / Unmute
+    if (key === 'm' || key === 'M') {
+        event.preventDefault();
+        var curVol = $('#volumeslider').slider('getValue');
+        var newVol = (curVol > 0) ? 0 : 50;
+        if (typeof socket !== 'undefined') {
+            socket.send('MPD_API_SET_VOLUME,' + newVol);
+        }
+        return;
+    }
+
+    // Left Arrow -> Seek -5s
+    if (key === 'ArrowLeft') {
+        event.preventDefault();
+        if (current_song && current_song.currentSongId >= 0 && current_song.totalTime) {
+            var curElapsed = (last_state && last_state.data && last_state.data.elapsedTime) ? last_state.data.elapsedTime : 0;
+            var newSeek = Math.max(0, curElapsed - 5);
+            if (typeof socket !== 'undefined') {
+                socket.send('MPD_API_SET_SEEK,' + current_song.currentSongId + ',' + newSeek);
+            }
+        }
+        return;
+    }
+
+    // Right Arrow -> Seek +5s
+    if (key === 'ArrowRight') {
+        event.preventDefault();
+        if (current_song && current_song.currentSongId >= 0 && current_song.totalTime) {
+            var curElapsed = (last_state && last_state.data && last_state.data.elapsedTime) ? last_state.data.elapsedTime : 0;
+            var newSeek = Math.min(current_song.totalTime, curElapsed + 5);
+            if (typeof socket !== 'undefined') {
+                socket.send('MPD_API_SET_SEEK,' + current_song.currentSongId + ',' + newSeek);
+            }
+        }
+        return;
+    }
+});
+
+// Ingenious Mouse Wheel Scrolling for Volume & Seeking
+$(document).ready(function() {
+    // Mouse wheel over Volume Slider or Volume Icon adjusts volume
+    $('#volumeslider, #volume-icon').on('wheel', function(e) {
+        e.preventDefault();
+        var delta = e.originalEvent.deltaY;
+        var curVol = $('#volumeslider').slider('getValue');
+        var step = delta < 0 ? 5 : -5;
+        var newVol = Math.min(100, Math.max(0, (curVol || 0) + step));
+        if (typeof socket !== 'undefined') {
+            socket.send('MPD_API_SET_VOLUME,' + newVol);
+        }
+    });
+
+    // Mouse wheel over Progress Bar seeks +/- 5 seconds
+    $('.ytm-progress-edge').on('wheel', function(e) {
+        e.preventDefault();
+        var delta = e.originalEvent.deltaY;
+        if (current_song && current_song.currentSongId >= 0 && current_song.totalTime) {
+            var curElapsed = (last_state && last_state.data && last_state.data.elapsedTime) ? last_state.data.elapsedTime : 0;
+            var step = delta < 0 ? 5 : -5;
+            var newSeek = Math.min(current_song.totalTime, Math.max(0, curElapsed + step));
+            if (typeof socket !== 'undefined') {
+                socket.send('MPD_API_SET_SEEK,' + current_song.currentSongId + ',' + newSeek);
+            }
+        }
+    });
+});

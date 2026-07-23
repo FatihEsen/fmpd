@@ -50,6 +50,7 @@
     X(MPD_API_RM_RANGE) \
     X(MPD_API_RM_ALL) \
     X(MPD_API_MOVE_TRACK) \
+    X(MPD_API_MOVE_NEXT) \
     X(MPD_API_SEARCH) \
     X(MPD_API_SEND_MESSAGE) \
     X(MPD_API_SET_VOLUME) \
@@ -96,9 +97,10 @@ struct t_mpd {
 
     int song_id;
     unsigned queue_version;
-} mpd;
+};
 
-char dirble_api_token[28];
+extern struct t_mpd mpd;
+extern char dirble_api_token[28];
 
 struct t_mpd_client_session {
     int song_id;

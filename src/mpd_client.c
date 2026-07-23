@@ -31,6 +31,9 @@
 /* forward declaration */
 static int mpd_notify_callback(struct mg_connection *c, enum mg_event ev);
 
+struct t_mpd mpd;
+char dirble_api_token[28];
+
 const char * mpd_cmd_strs[] = {
     MPD_CMDS(GEN_STR)
 };
@@ -54,6 +57,37 @@ static inline enum mpd_cmd_ids get_cmd_id(char *cmd)
 
 int callback_mpd(struct mg_connection *c)
 {
+    if (c && c->content && strstr(c->content, "move_next") != NULL)
+    {
+        if (mpd.conn_state == MPD_CONNECTED && mpd.conn != NULL)
+        {
+            int song_id = -1;
+            int current_pos = -1;
+
+            char *p_song = strstr(c->content, "\"song_id\"");
+            if (p_song)
+            {
+                p_song = strchr(p_song, ':');
+                if (p_song)
+                    song_id = atoi(p_song + 1);
+            }
+
+            char *p_pos = strstr(c->content, "\"current_pos\"");
+            if (p_pos)
+            {
+                p_pos = strchr(p_pos, ':');
+                if (p_pos)
+                    current_pos = atoi(p_pos + 1);
+            }
+
+            if (song_id >= 0 && current_pos >= 0)
+            {
+                mpd_run_move_id(mpd.conn, (unsigned)song_id, (unsigned)(current_pos + 1));
+            }
+        }
+        return MG_TRUE;
+    }
+
     enum mpd_cmd_ids cmd_id = get_cmd_id(c->content);
     size_t n = 0;
     unsigned int uint_buf, uint_buf_2;
@@ -105,6 +139,12 @@ int callback_mpd(struct mg_connection *c)
                 uint_buf -= 1;
                 uint_buf_2 -= 1;
                 mpd_run_move(mpd.conn, uint_buf, uint_buf_2);
+            }
+            break;
+        case MPD_API_MOVE_NEXT:
+            if (sscanf(c->content, "MPD_API_MOVE_NEXT,%u,%u", &uint_buf, &uint_buf_2) == 2)
+            {
+                mpd_run_move_id(mpd.conn, uint_buf, uint_buf_2 + 1);
             }
             break;
         case MPD_API_PLAY_TRACK:

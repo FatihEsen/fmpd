@@ -4,206 +4,244 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="ympd - fast and lightweight MPD webclient">
+  <meta name="description" content="ympd - YouTube Music MPD Web Client">
   <meta name="author" content="andy@ndyk.de">
 
-  <title>ympd</title>
+  <title>YouTube Music - ympd</title>
 
   <!-- Bootstrap core CSS -->
   <link href="css/bootstrap.css" rel="stylesheet">
   <link href="css/bootstrap-theme.css" rel="stylesheet">
 
-  <!-- Custom styles for this template -->
+  <!-- Custom YouTube Music styles -->
   <link href="css/mpd.css" rel="stylesheet">
   <link href="assets/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon">
   <script src="js/modernizr-custom.js"></script>
 </head>
 <body>
 
-  <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-    <div class="container">
-      <div class="navbar-header">
-        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-        </button>
-        <a class="navbar-brand" href="/"><span class="glyphicon glyphicon-play-circle"></span> ympd</a>
-      </div>
-      <div class="collapse navbar-collapse">
-
-        <ul id="nav_links" class="nav navbar-nav">
-          <li id="queue"><a href="#/">Queue</a></li>
-          <li id="browse"><a href="#/browse/0/">Browse Database</a></li>
-          <li id="dirble"><a href="#/dirble/">Dirble</a></li>
-          <li><a href="#" data-toggle="modal" data-target="#addstream">Add Stream</a></li>
-          <li><a href="#" data-toggle="modal" data-target="#settings" onclick="getHost();">Settings</a></li>
-        </ul>
-
-        <div class="btn-toolbar navbar-btn navbar-right" role="toolbar">
-          <div class="btn-group">
-            <button type="button" class="btn btn-default" onclick="socket.send('MPD_API_SET_PREV');">
-              <span class="glyphicon glyphicon-backward"></span>
-            </button>
-            <button type="button" class="btn btn-default" onclick="socket.send('MPD_API_SET_STOP');">
-              <span id="stop-icon" class="glyphicon glyphicon-stop"></span>
-            </button>
-            <button type="button" class="btn btn-default" onclick="clickPlay();">
-              <span id="play-icon" class="glyphicon glyphicon-pause"></span>
-            </button>
-            <button type="button" class="btn btn-default" onclick="socket.send('MPD_API_SET_NEXT');">
-              <span class="glyphicon glyphicon-forward"></span>
-            </button>
-          </div>
-          <div class="btn-group">
-            <button id="btnlove" type="button" class="btn btn-default" onclick="clickLove();">
-              <span class="glyphicon glyphicon-heart"></span>
-            </button>
-          </div>
-          <div class="btn-group">
-            <div class="btn btn-toolbar btn-default">
-              <span id="volume-icon" class="glyphicon glyphicon-volume-up"></span>
-              <div id="volumeslider"></div>
-            </div>
-          </div>
-        </div>
-        <form id="search" class="navbar-form navbar-right" role="search">
-          <div class="form-group">
-            <input type="text" class="form-control" placeholder="Search">
-          </div>
-        </form>
-      </div><!--/.nav-collapse -->
+  <!-- YouTube Music Top Header Bar -->
+  <header class="ytm-header">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button type="button" class="ytm-menu-toggle" onclick="toggleSidebar();" title="Toggle Navigation Menu">
+        <span class="glyphicon glyphicon-align-justify"></span>
+      </button>
+      <a class="ytm-brand" href="#/">
+        <span class="glyphicon glyphicon-play-circle ytm-brand-icon"></span>
+        <span>Music</span>
+        <span class="ytm-brand-tag">ympd</span>
+      </a>
     </div>
+
+    <div class="ytm-search-container">
+      <form id="search" class="navbar-form" role="search">
+        <div class="form-group" style="margin: 0; width: 100%;">
+          <input type="text" class="form-control" placeholder="Search songs, albums, artists (/)...">
+        </div>
+      </form>
+    </div>
+
+    <div class="ytm-header-actions">
+      <button type="button" class="btn btn-default" data-toggle="modal" data-target="#shortcutModal" title="Keyboard Shortcuts (?)">
+        <span class="glyphicon glyphicon-question-sign"></span>
+      </button>
+      <button type="button" class="btn btn-default" data-toggle="modal" data-target="#addstream">
+        <span class="glyphicon glyphicon-plus"></span> <span class="hidden-xs">Stream</span>
+      </button>
+      <button type="button" class="btn btn-default" data-toggle="modal" data-target="#settings" onclick="getHost();">
+        <span class="glyphicon glyphicon-cog"></span> <span class="hidden-xs">Settings</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div class="ytm-sidebar-overlay" onclick="closeSidebar();"></div>
+
+  <!-- YouTube Music App Body (Left Sidebar + Main Content) -->
+  <div class="ytm-app-body">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside class="ytm-sidebar">
+      <ul id="nav_links" class="ytm-sidebar-nav">
+        <li id="queue" class="active">
+          <a href="#/"><span class="glyphicon glyphicon-list"></span> Queue</a>
+        </li>
+        <li id="browse">
+          <a href="#/browse/0/"><span class="glyphicon glyphicon-folder-open"></span> Browse Library</a>
+        </li>
+        <li id="dirble">
+          <a href="#/dirble/"><span class="glyphicon glyphicon-globe"></span> Dirble</a>
+        </li>
+      </ul>
+
+      <div class="ytm-sidebar-divider"></div>
+      <div class="ytm-sidebar-section-title">Playback Modes</div>
+
+      <div class="btn-group-vertical" data-toggle="buttons">
+        <button id="btnrandom" type="button" class="btn btn-default">
+          <span class="glyphicon glyphicon-random"></span> Random
+        </button>
+        <button id="btnconsume" type="button" class="btn btn-default">
+          <span class="glyphicon glyphicon-fire"></span> Consume
+        </button>
+        <button id="btnsingle" type="button" class="btn btn-default">
+          <span class="glyphicon glyphicon-star"></span> Single
+        </button>
+        <button id="btncrossfade" type="button" class="btn btn-default">
+          <span class="glyphicon glyphicon-link"></span> Crossfade
+        </button>
+        <button id="btnrepeat" type="button" class="btn btn-default">
+          <span class="glyphicon glyphicon-repeat"></span> Repeat
+        </button>
+      </div>
+
+      <div id="btn-outputs-block" class="btn-group-vertical" style="margin-top: 12px;"></div>
+
+      <div class="ytm-sidebar-divider"></div>
+      <div class="ytm-sidebar-section-title">Queue Actions</div>
+
+      <div id="batch-sidebar-actions" class="btn-group-vertical" style="margin-bottom: 12px;">
+        <button id="btn-batch-queue-next" type="button" class="btn btn-primary disabled" onclick="queueNextBatch();" disabled>
+          <span class="glyphicon glyphicon-circle-arrow-right"></span> Queue Next (Ö)
+        </button>
+        <button id="btn-batch-delete" type="button" class="btn btn-default disabled" onclick="deleteBatch();" disabled>
+          <span class="glyphicon glyphicon-trash"></span> Remove Selected
+        </button>
+      </div>
+
+      <div id="trashmode" class="btn-group-vertical" data-toggle="radio" style="margin-bottom: 12px;">
+        <button id="btntrashmodeup" type="button" class="btn btn-default">
+          <span class="glyphicon glyphicon-chevron-up"></span> Up
+        </button>
+        <button id="btntrashmodesingle" type="button" class="btn btn-default active">
+          <span class="glyphicon glyphicon-star-empty"></span> Single
+        </button>
+        <button id="btntrashmodedown" type="button" class="btn btn-default">
+          <span class="glyphicon glyphicon-chevron-down"></span> Down
+        </button>
+      </div>
+
+      <div id="btn-responsive-block" class="btn-group-vertical">
+        <button type="button" class="btn btn-default" onclick="socket.send('MPD_API_RM_ALL');">
+          <span class="glyphicon glyphicon-trash"></span> Clear Queue
+        </button>
+        <a href="#" data-toggle="modal" data-target="#savequeue" class="btn btn-default">
+          <span class="glyphicon glyphicon-save"></span> Save Queue
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="ytm-main-content">
+      <div class="notifications top-right"></div>
+
+      <ol id="breadcrump" class="breadcrumb"></ol>
+
+      <div id="filter" style="margin-bottom: 12px; overflow: hidden;">
+        <button id="add-all-songs" class="btn btn-primary pull-right">Add all</button>
+      </div>
+
+      <!-- Selected Track Count Badge above Playlist -->
+      <div id="batch-count-indicator" class="ytm-selected-indicator hide" style="margin-bottom: 12px;">
+        <span id="batch-count-badge" class="badge" style="background: var(--ytm-red); font-size: 13px; padding: 6px 14px;">0 selected</span>
+      </div>
+
+      <!-- Main Queue Table Container -->
+      <div class="ytm-table-card">
+        <table id="salamisandwich" class="table table-hover">
+          <thead>
+            <tr>
+              <th style="width: 36px; text-align: center;"><input type="checkbox" id="select-all-tracks" onclick="toggleSelectAllTracks(this)" title="Select/Deselect All"></th>
+              <th>#</th>
+              <th colspan="2">Track</th>
+              <th>Duration</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <div id="dirble_panel" style="padding: 16px;">
+          <p id="dirble_loading" style="font-size:16px;font-weight:bold;margin-left:2em;">Loading...</p>
+          <table style="float:right; width:44%; margin-right:4%;" id="dirble_right" class="table table-hover">
+            <thead><tr><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <table style="width:44%; margin-left:4%;" id="dirble_left" class="table table-hover">
+            <thead><tr><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <ul class="pager" style="margin-top: 16px;">
+        <li id="prev" class="page-btn hide"><a href="">Previous</a></li>
+        <li id="next" class="page-btn"><a href="">Next</a></li>
+      </ul>
+
+      <!-- Keyboard Shortcuts Badge Bar -->
+      <div class="kbd-shortcuts-bar">
+        <span><span class="kbd-badge">J</span>/<span class="kbd-badge">K</span> or <span class="kbd-badge">↑</span>/<span class="kbd-badge">↓</span> Navigate</span>
+        <span><span class="kbd-badge">Enter</span> Play</span>
+        <span><span class="kbd-badge">Ö</span> Queue Next</span>
+        <span><span class="kbd-badge">D</span> Delete</span>
+        <span><span class="kbd-badge">/</span> Search</span>
+        <span><span class="kbd-badge">Space</span> Pause</span>
+        <span><span class="kbd-badge">N</span> Next</span>
+        <span><span class="kbd-badge">B</span> Prev</span>
+      </div>
+    </main>
+
   </div>
 
-  <div class="container starter-template">
-    <div class="row">
+  <!-- Persistent YouTube Music Bottom Player Dock -->
+  <footer class="ytm-player-bar">
+    <!-- Progress Bar Line on Top of Dock -->
+    <div class="ytm-progress-edge">
+      <div id="progressbar"></div>
+    </div>
 
-      <div class="col-md-10 col-xs-12">
-        <div class="notifications top-right"></div>
-        
-        <div class="panel panel-primary">
-          <!-- Default panel contents -->
-          <div class="panel-heading"><b id="panel-heading">Queue</b></div>
-          <div class="panel-body">
-            <h1>
-              <span id="track-icon" onclick="clickPlay();" class="glyphicon glyphicon-play"></span>
-              <span id="currenttrack"></span>
-            </h1>
-            <h4>
-              <span id="album" class="text"></span>
-              <span id="artist" class="text pull-right"></span>
-            </h4>
-            <p id="counter" class="text pull-right">&nbsp;&nbsp;</p>
-
-            <div id="progressbar"></div>
-
-
-          </div><!-- /.panel-body -->
-
-          <ol id="breadcrump" class="breadcrumb">
-          </ol>
-
-          <div class="col-md-12" id="filter">
-          <button id="add-all-songs" class="btn btn-primary pull-right">Add all</button>
-          </div>
-
-
-          <!-- Table -->
-          <table id="salamisandwich" class="table table-hover">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th colspan="2">Track</th>
-                <th>Duration</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-            </tbody>
-          </table>
-
-          <div id="dirble_panel">
-            <p id="dirble_loading" style="font-size:16px;font-weight:bold;margin-left:4em;">Loading...</p>
-            <table style="float:right; width:44%; margin-right:4%;" id="dirble_right" class="table table-hover">
-                <thead>
-                <tr>
-                    <th></th>
-                </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-            <table style="width:44%; margin-left:4%;" id="dirble_left" class="table table-hover">
-                <thead>
-                <tr>
-                    <th></th>
-                </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+    <!-- Left Section: Track Title & Artist -->
+    <div class="ytm-player-left">
+      <div class="ytm-player-art">
+        <span id="track-icon" onclick="clickPlay();" class="glyphicon glyphicon-music"></span>
+      </div>
+      <div class="ytm-player-track-info">
+        <div id="currenttrack" class="ytm-player-track-title">No track selected</div>
+        <div class="ytm-player-track-artist">
+          <span id="artist">Unknown Artist</span> &bull; <span id="album">Unknown Album</span>
         </div>
+      </div>
+      <button id="btnlove" type="button" class="btn btn-default ytm-control-btn" onclick="clickLove();" title="Love / Heart">
+        <span class="glyphicon glyphicon-heart"></span>
+      </button>
+    </div>
 
-        </div><!-- /.panel -->
-        <ul class="pager">
-          <li id="prev" class="page-btn hide"><a href="">Previous</a></li>
-          <li id="next" class="page-btn"><a href="">Next</a></li>
-        </ul>
-      </div><!-- /.col-md-10 -->
+    <!-- Center Section: Playback Controls -->
+    <div class="ytm-player-center">
+      <button type="button" class="btn ytm-control-btn" onclick="socket.send('MPD_API_SET_PREV');">
+        <span class="glyphicon glyphicon-step-backward"></span>
+      </button>
+      <button type="button" class="btn ytm-play-btn-circle" onclick="clickPlay();">
+        <span id="play-icon" class="glyphicon glyphicon-play"></span>
+      </button>
+      <button type="button" class="btn ytm-control-btn" onclick="socket.send('MPD_API_SET_STOP');">
+        <span id="stop-icon" class="glyphicon glyphicon-stop"></span>
+      </button>
+      <button type="button" class="btn ytm-control-btn" onclick="socket.send('MPD_API_SET_NEXT');">
+        <span class="glyphicon glyphicon-step-forward"></span>
+      </button>
+    </div>
 
-      <div class="col-md-2 col-xs-12">
-        <div class="btn-toolbar">
-          <div class="btn-group-vertical btn-block btn-group-lg" data-toggle="buttons">
-            <button id="btnrandom" type="button" class="btn btn-default">
-              <span class="glyphicon glyphicon-random"></span> Random
-            </button>
-            <button id="btnconsume" type="button" class="btn btn-default">
-              <span class="glyphicon glyphicon-fire"></span> Consume
-            </button>
-            <button id="btnsingle" type="button" class="btn btn-default">
-              <span class="glyphicon glyphicon-star"></span> Single
-            </button>
-            <button id="btncrossfade" type="button" class="btn btn-default">
-              <span class="glyphicon glyphicon-link"></span> Crossfade
-            </button>
-            <button id="btnrepeat" type="button" class="btn btn-default">
-              <span class="glyphicon glyphicon-repeat"></span> Repeat
-            </button>
-          </div>
-          <div id="btn-outputs-block" class="btn-group-vertical btn-block btn-group-lg">
-          </div>
+    <!-- Right Section: Time Counter & Volume Bar -->
+    <div class="ytm-player-right">
+      <span id="counter" style="margin-right: 8px;">0:00 / 0:00</span>
+      <span id="volume-icon" class="glyphicon glyphicon-volume-up"></span>
+      <div id="volumeslider"></div>
+    </div>
+  </footer>
 
-          <div id="trashmode" class="btn-group-vertical btn-block btn-group-lg" data-toggle="radio">
-            <button id="btntrashmodeup" type="button" class="btn btn-default">
-              <span class="glyphicon glyphicon-chevron-up"></span>
-              <span class="glyphicon glyphicon-trash"></span> <span>Up</span>
-            </button>
-            <button id="btntrashmodesingle" type="button" class="btn btn-default active">
-              <span class="glyphicon glyphicon-star-empty"></span>
-              <span class="glyphicon glyphicon-trash"></span> <span>Single</span>
-            </button>
-            <button id="btntrashmodedown" type="button" class="btn btn-default">
-              <span class="glyphicon glyphicon-chevron-down"></span>
-              <span class="glyphicon glyphicon-trash"></span> <span>Down</span>
-            </button>
-          </div>
-
-          <div id="btn-responsive-block" class="btn-group-vertical btn-block btn-group-lg">
-            <button type="button" class="btn btn-default" onclick="socket.send('MPD_API_RM_ALL');">
-              <span class="glyphicon glyphicon-trash"></span> Clear Queue
-            </button>
-            <a href="#" data-toggle="modal" data-target="#savequeue" class="btn btn-default">
-              <span class="glyphicon glyphicon-save"></span> Save Queue
-            </a>
-          </div>
-
-        </div>
-      </div><!-- /.col-md-2 -->
-    </div><!-- /.row -->
-  </div><!-- /.container -->
-
-  <!-- Modal -->
+  <!-- Modals -->
   <div class="modal fade" id="settings" tabindex="-1" role="dialog" aria-labelledby="settingsLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -212,13 +250,9 @@
           <h2 class="modal-title" id="settingsLabel"><span class="glyphicon glyphicon-wrench"></span> Settings</h2>
         </div>
         <div class="modal-body">
-          <h4><a href="http://www.ympd.org"><span class="glyphicon glyphicon-play-circle"></span> ympd</a>&nbsp;&nbsp;&nbsp;<small>MPD Web GUI - written in C, utilizing Websockets and Bootstrap/JS</small></h4>
-          <p>
-          ympd is a lightweight MPD (Music Player Daemon) web client that runs without a dedicated webserver or interpreters like PHP, NodeJS or Ruby. It's tuned for minimal resource usage and requires only very litte dependencies.</p>
-          <h5>ympd uses following excellent software:</h5>
-          <h6><a href="http://cesanta.com/docs.html">Mongoose</a> <small>GPLv2</small></h6>
-          <h6><a href="http://www.musicpd.org/libs/libmpdclient/">libMPDClient</a> <small>BSD License</small></h6>
-	  <hr />
+          <h4><a href="http://www.ympd.org"><span class="glyphicon glyphicon-play-circle"></span> ympd</a>&nbsp;&nbsp;&nbsp;<small>MPD Web GUI - YouTube Music Clone</small></h4>
+          <p>ympd is a lightweight MPD web client that runs without a dedicated webserver.</p>
+          <hr />
           <div class="row">
             <div class="form-group col-md-6">
               <button type="button" class="btn btn-default btn-block" onclick="updateDB();">
@@ -250,9 +284,8 @@
               </div>
               <div class="form-group col-md-6">
                 <label class="control-label" for="mpd_pw_con">MPD Password (Confirmation)</label>
-                <input type="password" class="form-control" id="mpd_pw_con"  placeholder="Confirmation"
-                data-placement="right" data-toggle="popover" data-content="Password does not match!"
-                data-trigger="manual" />
+                <input type="password" class="form-control" id="mpd_pw_con" placeholder="Confirmation"
+                data-placement="right" data-toggle="popover" data-content="Password does not match!" data-trigger="manual" />
               </div>
               <div class="form-group col-md-12">
                 <div id="mpd_password_set" class="hide alert alert-info">
@@ -265,19 +298,18 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-default" onclick="confirmSettings();">Save</button>
+          <button type="button" class="btn btn-primary" onclick="confirmSettings();">Save</button>
         </div>
-      </div><!-- /.modal-content -->
-    </div><!-- /.modal-dialog -->
-  </div><!-- /.modal -->
+      </div>
+    </div>
+  </div>
 
-  <!-- Modal -->
   <div class="modal fade" id="addstream" tabindex="-1" role="dialog" aria-labelledby="addstreamLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-          <h2 class="modal-title" id="addstreamLabel"><span class="glyphicon glyphicon-wrench"></span> Add Stream</h2>
+          <h2 class="modal-title" id="addstreamLabel"><span class="glyphicon glyphicon-plus"></span> Add Stream</h2>
         </div>
         <div class="modal-body">
           <form role="form">
@@ -291,23 +323,23 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-default" onclick="addStream();">Add Stream</button>
+          <button type="button" class="btn btn-primary" onclick="addStream();">Add Stream</button>
         </div>
-      </div><!-- /.modal-content -->
-    </div><!-- /.modal-dialog -->
-  </div><!-- /.modal -->
+      </div>
+    </div>
+  </div>
   
   <div class="modal fade" id="savequeue" tabindex="-1" role="dialog" aria-labelledby="savequeueLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-          <h2 class="modal-title" id="savequeueLabel"><span class="glyphicon glyphicon-wrench"></span> Save Queue</h2>
+          <h2 class="modal-title" id="savequeueLabel"><span class="glyphicon glyphicon-save"></span> Save Queue</h2>
         </div>
         <div class="modal-body">
           <form role="form">
             <div class="row">
-              <div class="form-group col-md-9">
+              <div class="form-group col-md-12">
                 <label class="control-label" for="playlistname">Playlist Name</label>
                 <input type="text" class="form-control" id="playlistname" />
               </div>
@@ -316,11 +348,48 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-default" onclick="saveQueue();">Save Queue</button>
+          <button type="button" class="btn btn-primary" onclick="saveQueue();">Save Queue</button>
         </div>
-      </div><!-- /.modal-content -->
-    </div><!-- /.modal-dialog -->
-  </div><!-- /.modal -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Help Modal -->
+  <div class="modal fade" id="shortcutModal" tabindex="-1" role="dialog" aria-labelledby="shortcutModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h2 class="modal-title" id="shortcutModalLabel"><span class="glyphicon glyphicon-question-sign"></span> Keyboard Shortcuts Guide (?)</h2>
+        </div>
+        <div class="modal-body">
+          <table class="table" style="font-size: 13px;">
+            <thead>
+              <tr>
+                <th>Shortcut</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="kbd-badge">J</span> / <span class="kbd-badge">K</span> or <span class="kbd-badge">↓</span> / <span class="kbd-badge">↑</span></td><td>Navigate tracks in queue</td></tr>
+              <tr><td><span class="kbd-badge">Enter</span></td><td>Play selected track</td></tr>
+              <tr><td><span class="kbd-badge">Ö</span></td><td>Queue Next (move song to play next)</td></tr>
+              <tr><td><span class="kbd-badge">D</span> / <span class="kbd-badge">Delete</span></td><td>Remove song from queue</td></tr>
+              <tr><td><span class="kbd-badge">/</span></td><td>Focus search bar</td></tr>
+              <tr><td><span class="kbd-badge">Space</span></td><td>Play / Pause toggle</td></tr>
+              <tr><td><span class="kbd-badge">N</span></td><td>Next track</td></tr>
+              <tr><td><span class="kbd-badge">B</span></td><td>Previous track</td></tr>
+              <tr><td><span class="kbd-badge">Escape</span></td><td>Blur search input</td></tr>
+              <tr><td><span class="kbd-badge">?</span></td><td>Open this shortcuts guide</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="modal fade bs-example-modal-sm" id="wait" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false" aria-hidden="true">
     <div class="modal-dialog">
@@ -330,7 +399,7 @@
         </div>
         <div class="modal-body">
           <div class="progress progress-striped active">
-            <div class="progress-bar"  role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+            <div class="progress-bar" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
               <span class="sr-only">Please Wait</span>
             </div>
           </div>
@@ -339,10 +408,7 @@
     </div>
   </div>
 
-
-  <!-- Bootstrap core JavaScript
-  ================================================== -->
-  <!-- Placed at the end of the document so the pages load faster -->
+  <!-- Scripts -->
   <script src="js/jquery-1.10.2.min.js"></script>
   <script src="js/jquery.cookie.js"></script>
   <script src="js/bootstrap.min.js"></script>
