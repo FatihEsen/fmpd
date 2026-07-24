@@ -1047,10 +1047,10 @@ function updateBatchToolbar() {
     if (selectedCount > 0) {
         $('#batch-count-badge').text(selectedCount + ' seçildi');
         $('#batch-count-indicator').removeClass('hide');
-        $('#btn-batch-queue-next, #btn-batch-delete, #btn-batch-move-up, #btn-batch-move-down').removeClass('disabled').prop('disabled', false);
+        $('#btn-batch-queue-next, #btn-batch-queue-next-mini, #btn-batch-delete, #btn-batch-move-up, #btn-batch-move-down').removeClass('disabled').prop('disabled', false);
     } else {
         $('#batch-count-indicator').addClass('hide');
-        $('#btn-batch-queue-next, #btn-batch-delete, #btn-batch-move-up, #btn-batch-move-down').addClass('disabled').prop('disabled', true);
+        $('#btn-batch-queue-next, #btn-batch-queue-next-mini, #btn-batch-delete, #btn-batch-move-up, #btn-batch-move-down').addClass('disabled').prop('disabled', true);
     }
 }
 

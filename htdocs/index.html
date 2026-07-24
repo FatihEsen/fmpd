@@ -86,6 +86,7 @@
             <button id="btnsingle" type="button" class="btn-mode-icon" onclick="socket.send('MPD_API_SET_SINGLE,' + ($(this).hasClass('active') ? 0 : 1));" title="Tek Şarkı (y)"><span class="glyphicon glyphicon-refresh"></span></button>
             <button id="btnconsume" type="button" class="btn-mode-icon" onclick="socket.send('MPD_API_SET_CONSUME,' + ($(this).hasClass('active') ? 0 : 1));" title="Tüket (x)"><span class="glyphicon glyphicon-fire"></span></button>
             <button id="btnlove" type="button" class="btn-mode-icon" onclick="clickLove();" title="Favori (Love)"><span class="glyphicon glyphicon-heart"></span></button>
+            <button id="btn-batch-queue-next-mini" type="button" class="btn-mode-icon disabled" disabled onclick="queueNextBatch();" title="Seçilenleri Çalanın Altına Ekle (ö)"><span class="glyphicon glyphicon-step-forward"></span></button>
           </div>
         </div>
       </div>
