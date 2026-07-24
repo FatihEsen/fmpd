@@ -1,106 +1,206 @@
-# fmpd - YouTube Music Inspired MPD Web Client
+<div align="center">
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/FatihEsen/fmpd)
-[![License](https://img.shields.io/badge/license-GPL--2.0-blue.svg)](LICENSE)
+```
+██╗   ██╗███╗   ███╗██████╗ ██████╗
+╚██╗ ██╔╝████╗ ████║██╔══██╗██╔══██╗
+ ╚████╔╝ ██╔████╔██║██████╔╝██║  ██║
+  ╚██╔╝  ██║╚██╔╝██║██╔═══╝ ██║  ██║
+   ██║   ██║ ╚═╝ ██║██║     ██████╔╝
+   ╚═╝   ╚═╝     ╚═╝╚═╝     ╚═════╝
+```
 
-**fmpd** (fork of ympd) is a lightweight, high-performance Standalone MPD Web GUI written in C using WebSockets, libmpdclient, and a modern **YouTube Music** dark interface.
+# 🌿 ympd — Catppuccin Mocha × Studio Ghibli
 
----
+**A gorgeous, minimal MPD web client wrapped in the Catppuccin Mocha color palette  
+with Studio Ghibli vibes — because your music deserves a beautiful home.**
 
-## ✨ Features & Enhancements
+[![License: MIT](https://img.shields.io/badge/License-MIT-cba6f7?style=for-the-badge&logo=opensource&logoColor=11111b)](LICENSE)
+[![C](https://img.shields.io/badge/Backend-C-a6e3a1?style=for-the-badge&logo=c&logoColor=11111b)](src/)
+[![MPD](https://img.shields.io/badge/MPD-Compatible-fab387?style=for-the-badge&logo=musicbrainz&logoColor=11111b)](https://www.musicpd.org/)
+[![WebSocket](https://img.shields.io/badge/Realtime-WebSocket-89b4fa?style=for-the-badge&logo=socket.io&logoColor=11111b)](src/websocket.c)
 
-- 🎵 **YouTube Music UI/UX**: Dark mode styling (`#030303`), YouTube Red (`#ff0000`) accents, glassmorphic backdrop blurs (`backdrop-filter`), and sleek responsive layout.
-- ⚡ **C Backend WebSocket `move_next`**: Native C backend WebSocket handler (`MPD_API_MOVE_NEXT` in `src/mpd_client.c`) that directly invokes `mpd_run_move_id()` to place songs right after the playing track.
-- ☑️ **Multi-Select Checkboxes**: Select multiple tracks in the queue via checkboxes to batch "Queue Next" (`Ö` key) or remove them.
-- 📊 **Live Equalizer Wave Animation**: Animated CSS 3-bar equalizer on the currently playing track.
-- 📱 **100% Responsive Design**: Off-canvas drawer sidebar on Mobile (< 768px), compact icon sidebar on Tablet (768-991px), and centered wide-screen margins on Desktop (> 1200px).
-- 🎛️ **Ingenious Touch & Wheel Sliders**:
-  - Expanded 24px hit box for effortless finger and mouse scrubbing.
-  - Hover scaling thumb knob ball for precise visual feedback.
-  - Mouse wheel scrolling on volume bar to adjust volume (`+/- 5%`).
-  - Mouse wheel scrolling on progress bar to seek (`+/- 5s`).
-- ⌨️ **Keyboard-First Shortcuts**:
-  - `J` / `K` or `↓` / `↑`: Navigate queue items.
-  - `Enter`: Play selected track.
-  - `Ö`: Queue Next (move track right after current song).
-  - `D` / `Delete`: Remove track from queue.
-  - `/`: Focus search pill.
-  - `Space`: Play / Pause toggle.
-  - `+` / `-`: Volume up / down.
-  - `M`: Toggle Mute / Unmute.
-  - `←` / `→`: Seek backward / forward 5s.
-  - `?`: Open keyboard shortcuts help modal.
+</div>
 
 ---
 
-## 🛠️ Build & Installation (Linux)
+## ✨ Highlights
 
-### Dependencies
-- `libmpdclient 2`
-- `cmake 3.5+`
-- `make` / `gcc` or `clang`
+| Feature | Description |
+|---|---|
+| 🎨 **Catppuccin Mocha** | Full Catppuccin Mocha palette — every pixel lovingly themed |
+| 🌿 **Studio Ghibli Vibes** | Warm pastels, smooth gradients, Quicksand font |
+| 🎵 **Live Seekbar** | Client-side ticker keeps the progress bar moving smoothly between server updates |
+| 📻 **Real-time via WebSocket** | Zero-poll, instant state sync with MPD |
+| 🗂️ **Music Library** | Browse your collection by directory, click folders to drill down |
+| 🔍 **Search** | Full-text search across your entire MPD database |
+| 📋 **Queue Management** | Drag-to-reorder, multi-select, batch delete, batch move |
+| ⌨️ **ncmpcpp Keybindings** | Feel right at home if you love the terminal |
+| 📱 **Mobile Responsive** | Fixed mini-player footer on mobile, touch-friendly |
+| 🔊 **Volume & Seek via Mouse Wheel** | Scroll over the volume or seekbar to control |
 
-### Quick Build Script
+---
+
+## 🖼️ Screenshots
+
+> *"Moving a castle is hard. Moving your playlist should not be."*
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  ympd  Ghibli  │  📻 Sıra  │  📁 Kütüphane  │          ⚙️ ❓ +  │
+├─────────────────┬───────────────────────────────────────────────┤
+│                 │  📻 Çalma Listesi Sırası                       │
+│  🌱  Spinning   │ ━━━━━━━━━━━━━━━━━━━━━━━━━━ 2:34 / 4:20       │
+│     Vinyl       │                                                │
+│     Disk        │  ♫ Song Title          Artist     Album  3:45 │
+│                 │  ♫ Song Title          Artist     Album  4:12 │
+│  Karalaya       │  ♫ Song Title (active) Artist     Album  2:58 │
+│  Kurtuluş Kuş   │  ♫ Song Title          Artist     Album  5:01 │
+│  2026 Karma     │                                                │
+│  ━━━━━━━━━━━━━  │                                                │
+│  ⏮ ⏸ ⏹ ⏭      │                                                │
+│  🔊 ━━━━━━ 88% │                                                │
+│  ↑ ⏭ ↓ 🗑 🔄 💾 │                                                │
+└─────────────────┴───────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+```bash
+# Ubuntu / Debian
+sudo apt install cmake libmpdclient-dev libwebsockets-dev
+
+# Arch Linux
+sudo pacman -S cmake libmpdclient libwebsockets
+
+# Fedora
+sudo dnf install cmake libmpdclient-devel libwebsockets-devel
+```
+
+### Build & Run
+
 ```bash
 git clone https://github.com/FatihEsen/fmpd.git
 cd fmpd
-chmod +x build.sh
-./build.sh
+
+# One-shot build (compiles assets into binary, no runtime file serving needed)
+bash build.sh
+
+# Run (defaults to port 8080, connects to MPD on localhost:6600)
+./build/ympd
+
+# Custom host/port
+./build/ympd --webport 8080 --host 127.0.0.1 --port 6600
 ```
 
-### Running
+Open your browser at **http://localhost:8080** 🎉
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+> Inspired by **ncmpcpp** — muscle memory friendly.
+
+| Key | Action |
+|---|---|
+| `Space` | Play / Pause |
+| `n` / `>` | Next track |
+| `b` / `<` | Previous track |
+| `s` | Stop |
+| `z` | Toggle Random |
+| `r` | Toggle Repeat |
+| `y` | Toggle Single |
+| `x` | Toggle Consume |
+| `m` | Mute / Unmute |
+| `+` / `-` | Volume Up / Down |
+| `←` `→` | Seek -5s / +5s |
+| `↑` `↓` | Move selected track Up / Down |
+| `Shift+K` / `Shift+J` | Batch move Up / Down |
+| `d` / `Delete` | Delete selected track(s) |
+| `c` | Clear queue |
+| `ö` | Queue Next (selected) |
+| `/` | Focus search |
+| `?` | Show keyboard shortcuts |
+| `Enter` | Play selected / Open folder |
+| `Escape` | Close sidebar / modals |
+
+---
+
+## 🏗️ Architecture
+
+```
+fmpd/
+├── src/
+│   ├── ympd.c           # Entry point, CLI args, HTTP server
+│   ├── mpd_client.c     # MPD protocol handler (libmpdclient)
+│   └── websocket.c      # WebSocket server (libwebsockets)
+├── htdocs/
+│   ├── index.html       # Single-page app shell
+│   ├── css/mpd.css      # Catppuccin Mocha + Ghibli theme
+│   └── js/
+│       ├── mpd.js       # App logic, routing, WebSocket client
+│       └── bootstrap-slider.js
+├── build.sh             # Builds assets → assets.c → binary
+└── CMakeLists.txt
+```
+
+The build process embeds all HTML/CSS/JS **directly into the binary** via `mkdata` — no runtime file serving, no web server config, just run and enjoy.
+
+---
+
+## 🎨 Color Palette — Catppuccin Mocha
+
+| Swatch | Name | Hex | Usage |
+|---|---|---|---|
+| 🟣 | Mauve | `#cba6f7` | Active states, accents, seekbar |
+| 🟠 | Peach | `#fab387` | Folder icons, brand title |
+| 🟢 | Green | `#a6e3a1` | Music icons, seekbar fill start |
+| 🔵 | Blue | `#89b4fa` | Links, info |
+| 🩷 | Pink | `#f5c2e7` | Seekbar fill end |
+| ⬛ | Base | `#1e1e2e` | Main background |
+| ⬛ | Mantle | `#181825` | Header background |
+| ⬛ | Crust | `#11111b` | Deepest background |
+
+---
+
+## 📱 Mobile
+
+On screens ≤ 768px, the player collapses into a **fixed footer mini-player** with:
+- Seekbar at the top of the card
+- Track info (title, artist)
+- Playback controls
+- Mode toggles (random, repeat, single, consume, love)
+- Batch action toolbar (move up/down, queue next, delete, clear, save)
+
+---
+
+## 🔧 Build Script
+
+`build.sh` does everything in one shot:
+
 ```bash
-./build/ympd -h 127.0.0.1 -p 6600 -w 8080
-```
-Open your browser at: **`http://localhost:8080`**
-
----
-
-## 📱 Termux (Android) Installation Guide
-
-To run **fmpd** directly on your Android phone using **Termux**:
-
-1. **Install Dependencies**:
-   ```bash
-   pkg update && pkg upgrade -y
-   pkg install git cmake make clang libmpdclient mpd -y
-   ```
-
-2. **Clone & Build**:
-   ```bash
-   git clone https://github.FatihEsen/fmpd.git
-   cd fmpd
-   chmod +x build.sh
-   ./build.sh
-   ```
-
-3. **Start MPD & fmpd**:
-   ```bash
-   mpd
-   ./build/ympd -h 127.0.0.1 -p 6600 -w 8080
-   ```
-
-4. **Access in Mobile Browser**:
-   Open Chrome / Firefox on your phone and go to:
-   👉 **`http://localhost:8080`**
-
----
-
-## ⚙️ Command Line Options
-
-```
-Usage: ./ympd [OPTION]...
-
- -h, --host <host>             connect to mpd at host [localhost]
- -p, --port <port>             connect to mpd at port [6600]
- -w, --webport [ip:]<port>     listen interface/port for webserver [8080]
- -u, --user <username>         drop privileges to user after socket bind
- -V, --version                 get version
- --help                        this help
+bash build.sh
+# → Runs CMake
+# → Compiles mkdata (asset embedder)
+# → Runs mkdata to generate assets.c from htdocs/
+# → Compiles ympd with assets baked in
+# → Output: build/ympd
 ```
 
 ---
 
-## 📜 License
+## 📄 License
 
-GPL-2.0 License. Original ympd project by <andy@ndyk.de>. Customized & enhanced by Fatih Esen.
+MIT — do whatever you want, just keep the vibes good. 🌿
+
+---
+
+<div align="center">
+
+*Built with 🌿 and too much coffee.*  
+*Powered by [MPD](https://www.musicpd.org/) · Themed with [Catppuccin](https://catppuccin.com/) · Vibes from [Studio Ghibli](https://www.ghibli.jp/)*
+
+</div>

@@ -28,7 +28,7 @@ var MAX_ELEMENTS_PER_PAGE = 512;
 var dirble_selected_cat = "";
 var dirble_catid = "";
 var dirble_page = 1;
-var isTouch = Modernizr.touch ? 1 : 0;
+var isTouch = (typeof Modernizr !== 'undefined' && Modernizr.touch) ? 1 : (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ? 1 : 0);
 var filter = undefined;
 var dirble_api_token = "";
 var dirble_stations = false;
@@ -37,10 +37,13 @@ var app = $.sammy(function() {
 
     function runBrowse() {
         current_app = 'queue';
+        $('body').removeClass('view-browse');
 
         $('#breadcrump').addClass('hide');
-        $('#filter').addClass('hide');
+        $('#filter').addClass('hide').hide();
         $('#add-all-songs').addClass('hide');
+        $('#btn-toggle-library-view').addClass('hide');
+        $('#library-3col-panel').addClass('hide').hide();
         $('#nav-queue').addClass('active');
         $('#panel-title').text("📻 Çalma Listesi Sırası");
         $('#salamisandwich').removeClass('ytm-browse-grid-mode').removeClass('hide').find("tr:gt(0)").remove();
@@ -49,10 +52,14 @@ var app = $.sammy(function() {
     }
 
     function prepare() {
+        $('body').removeClass('view-browse view-search');
         $('.nav-tab-pill').removeClass('active');
         $('#nav_links > li').removeClass('active');
         $('.page-btn').addClass('hide');
         $('#add-all-songs').addClass('hide');
+        $('#btn-toggle-library-view').addClass('hide');
+        $('#library-3col-panel').addClass('hide').hide();
+        $('#filter').addClass('hide').hide();
         pagination = 0;
         browsepath = '';
     }
@@ -63,18 +70,35 @@ var app = $.sammy(function() {
         runBrowse();
     });
 
+    this.get(/\#\/browse$/, function() {
+        app.setLocation('#/browse/0/');
+    });
+
+    this.get(/\#\/browse\/$/, function() {
+        app.setLocation('#/browse/0/');
+    });
+
     this.get(/\#\/browse\/(\d+)\/(.*)/, function() {
         prepare();
-        browsepath = this.params['splat'][1];
+        $('body').addClass('view-browse');
+        var rawSplat = this.params['splat'][1];
+        // Decode only once — handles both encoded and raw paths
+        try {
+            browsepath = decodeURIComponent(rawSplat);
+        } catch(e) {
+            browsepath = rawSplat;
+        }
         pagination = parseInt(this.params['splat'][0]);
+        filter = undefined;
         current_app = 'browse';
         $('#nav-browse').addClass('active');
         $('#panel-title').text("📁 Müzik Kütüphanesi");
-        $('#breadcrump').removeClass('hide').empty().append("<li><a href=\"#/browse/0/\" onclick=\"set_filter()\">root</a></li>");
-        $('#filter').removeClass('hide');
-        $('#salamisandwich').addClass('ytm-browse-grid-mode').removeClass('hide').find("tr:gt(0)").remove();
-        $('#dirble_panel').addClass('hide');
-        socket.send('MPD_API_GET_BROWSE,'+pagination+','+(browsepath ? browsepath : "/"));
+
+        $('#salamisandwich').removeClass('hide').show().find("tr:gt(0)").remove();
+        if (!browsepath) {
+            $('#breadcrump').removeClass('hide').empty().append("<li><a href=\"#/browse/0/\">root</a></li>");
+        }
+        socket.send('MPD_API_GET_BROWSE,'+pagination+','+(browsepath ? browsepath : ""));
         // Don't add all songs from root
         if (browsepath) {
             var add_all_songs = $('#add-all-songs');
@@ -102,15 +126,16 @@ var app = $.sammy(function() {
     });
 
     this.get(/\#\/search\/(.*)/, function() {
+        prepare();
+        $('body').addClass('view-search');
         current_app = 'search';
-        $('#salamisandwich').find("tr:gt(0)").remove();
+        $('#panel-title').text("🔍 Arama Sonuçları");
+        $('#salamisandwich').removeClass('hide').find("tr:gt(0)").remove();
         $('#dirble_panel').addClass('hide');
         var searchstr = this.params['splat'][0];
 
         $('#search > div > input').val(searchstr);
         socket.send('MPD_API_SEARCH,' + searchstr);
-
-        $('#panel-heading').text("Search: "+searchstr);
     });
 
     this.get(/\#\/dirble\/(\d+)\/(\d+)/, function() {
@@ -168,26 +193,16 @@ $(document).ready(function(){
     $("#volumeslider").on('slider.newValue', function(evt,data){
         socket.send("MPD_API_SET_VOLUME,"+data.val);
     });
-    $('#progressbar').slider(0);
-    $("#progressbar").on('slider.newValue', function(evt,data){
-        if(current_song && current_song.currentSongId >= 0) {
-            var seekVal = Math.ceil(current_song.totalTime*(data.val/100));
-            socket.send("MPD_API_SET_SEEK,"+current_song.currentSongId+","+seekVal);
-        }
-    });
 
-    $('#addstream').on('shown.bs.modal', function () {
-        $('#streamurl').focus();
-     })
-    $('#addstream form').on('submit', function (e) {
-        addStream();
+    // Custom seekbar click handler
+    $(document).on('click', '#seekbar, #seekbar-queue', function(e) {
+        if (!current_song || current_song.currentSongId < 0 || !current_song.totalTime) return;
+        var rect = this.getBoundingClientRect();
+        var pct = (e.clientX - rect.left) / rect.width;
+        pct = Math.max(0, Math.min(1, pct));
+        var seekVal = Math.round(pct * current_song.totalTime);
+        socket.send('MPD_API_SET_SEEK,' + current_song.currentSongId + ',' + seekVal);
     });
-
-    if(!notificationsSupported())
-        $('#btnnotify').addClass("disabled");
-    else
-        if ($.cookie("notification") === "true")
-            $('#btnnotify').addClass("active")
 
     add_filter();
 });
@@ -226,67 +241,45 @@ function webSocketConnect() {
                         break;
 
                     $('#salamisandwich > tbody').empty();
+                    var totalSongs = obj.data.length;
                     for (var song in obj.data) {
                         var minutes = Math.floor(obj.data[song].duration / 60);
                         var seconds = obj.data[song].duration - minutes * 60;
+                        var pos1Based = obj.data[song].pos + 1;
+
+                        var upDisabled = (pos1Based === 1) ? 'disabled' : '';
+                        var downDisabled = (pos1Based === totalSongs) ? 'disabled' : '';
+
+                        var actionButtons = "<div class=\"track-action-buttons\">" +
+                            "<button type=\"button\" class=\"btn-track-action btn-play-track\" title=\"Şarkıyı Çal\" onclick=\"event.stopPropagation(); playSingleTrack(" + obj.data[song].id + ");\"><span class=\"glyphicon glyphicon-play\"></span></button>" +
+                            "<button type=\"button\" class=\"btn-track-action btn-move-up\" " + upDisabled + " title=\"Yukarı Taşı\" onclick=\"event.stopPropagation(); moveTrackUp(" + pos1Based + ");\"><span class=\"glyphicon glyphicon-chevron-up\"></span></button>" +
+                            "<button type=\"button\" class=\"btn-track-action btn-move-down\" " + downDisabled + " title=\"Aşağı Taşı\" onclick=\"event.stopPropagation(); moveTrackDown(" + pos1Based + ");\"><span class=\"glyphicon glyphicon-chevron-down\"></span></button>" +
+                            "<button type=\"button\" class=\"btn-track-action btn-trash\" title=\"Sil\" onclick=\"event.stopPropagation(); trash($(this).closest('tr'));\"><span class=\"glyphicon glyphicon-trash\"></span></button>" +
+                            "</div>";
 
                         $('#salamisandwich > tbody').append(
-                            "<tr trackid=\"" + obj.data[song].id + "\">" +
-                                "<td style=\"text-align: center;\" onclick=\"event.stopPropagation();\"><input type=\"checkbox\" class=\"track-checkbox\" value=\"" + obj.data[song].id + "\" onclick=\"updateBatchToolbar()\"></td>" +
-                                "<td>" + (obj.data[song].pos + 1) + "</td>" +
-                                "<td>" + obj.data[song].artist + "<br /><span>" + obj.data[song].album  + "</span></td>" +
-                                "<td>" + obj.data[song].title  + "</td>" +
-                                "<td>" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds +
-                        "</td><td></td></tr>");
+                            "<tr trackid=\"" + obj.data[song].id + "\" data-pos=\"" + pos1Based + "\" class=\"song-row\">" +
+                                "<td class=\"song-title\"><span class=\"glyphicon glyphicon-music\" style=\"color: var(--ctp-green); margin-right: 8px;\"></span>" + obj.data[song].title  + "</td>" +
+                                "<td class=\"song-artist\">" + (obj.data[song].artist || '') + "</td>" +
+                                "<td class=\"song-album\">" + (obj.data[song].album  || '') + "</td>" +
+                                "<td class=\"text-right font-mono song-duration-col\">" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds + "</td>" +
+                                "<td class=\"text-right song-actions-cell\">" + actionButtons + "</td>" +
+                                "</tr>");
+
                     }
 
                     if(obj.data.length && obj.data[obj.data.length-1].pos + 1 >= pagination + MAX_ELEMENTS_PER_PAGE)
                         $('#next').removeClass('hide');
                     if(pagination > 0)
                         $('#prev').removeClass('hide');
-                    if ( isTouch ) {
-                        $('#salamisandwich > tbody > tr > td:last-child').append(
-                                    "<a class=\"pull-right btn-group-hover\" href=\"#/\" " +
-                                        "onclick=\"trash($(this).parents('tr'));\">" +
-                                "<span class=\"glyphicon glyphicon-trash\"></span></a>");
-                    } else {
-                        $('#salamisandwich > tbody > tr').on({
-                            mouseover: function(){
-                                var doomed = $(this);
-                                if ( $('#btntrashmodeup').hasClass('active') )
-                                    doomed = $("#salamisandwich > tbody > tr:lt(" + ($(this).index() + 1) + ")");
-                                if ( $('#btntrashmodedown').hasClass('active') )
-                                    doomed = $("#salamisandwich > tbody > tr:gt(" + ($(this).index() - 1) + ")");
-                                $.each(doomed, function(){
-                                if($(this).children().last().has("a").length == 0)
-                                    $(this).children().last().append(
-                                        "<a class=\"pull-right btn-group-hover\" href=\"#/\" " +
-                                            "onclick=\"trash($(this).parents('tr'));\">" +
-                                    "<span class=\"glyphicon glyphicon-trash\"></span></a>")
-                                .find('a').fadeTo('fast',1);
-                                });
-                            },
-                            mouseleave: function(){
-                                var doomed = $(this);
-                                if ( $('#btntrashmodeup').hasClass('active') )
-                                    doomed = $("#salamisandwich > tbody > tr:lt(" + ($(this).index() + 1) + ")");
-                                if ( $('#btntrashmodedown').hasClass('active') )
-                                    doomed = $("#salamisandwich > tbody > tr:gt(" + ($(this).index() - 1) + ")");
-                                $.each(doomed, function(){$(this).children().last().find("a").stop().remove();});
-                            }
-                        });
-                    };
 
-                    $('#salamisandwich > tbody > tr').on({
-                        click: function() {
-                            $('#salamisandwich > tbody > tr').removeClass('active').removeClass('selected');
-                            socket.send('MPD_API_PLAY_TRACK,'+$(this).attr('trackid'));
-                            $(this).addClass('active').addClass('selected');
-                        },
-                        mouseenter: function() {
-                            $('#salamisandwich > tbody > tr').removeClass('highlighted');
-                            $(this).addClass('highlighted');
+                    $('#salamisandwich > tbody').off('click', 'tr').on('click', 'tr', function(e) {
+                        if ($(e.target).closest('button, input, .track-action-buttons').length) {
+                            return;
                         }
+                        var $tr = $(this);
+                        $tr.toggleClass('selected');
+                        updateBatchToolbar();
                     });
                     //Helper function to keep table row from collapsing when being sorted
                     var fixHelperModified = function(e, tr) {
@@ -318,27 +311,24 @@ function webSocketConnect() {
                     if ($('#salamisandwich > tbody').is(':ui-sortable')) {
                         $('#salamisandwich > tbody').sortable('destroy');
                     }
+                    $('#salamisandwich > tbody').empty();
                     for (var item in obj.data) {
                         switch(obj.data[item].type) {
                             case 'directory':
                                 var clazz = 'dir';
-                                if (filter !== undefined) {
-                                    var first = obj.data[item].dir[0];
-                                    if (filter === "#" && isNaN(first)) {
-                                        clazz += ' hide';
-                                    } else if (filter >= "A" && filter <= "Z" && first.toUpperCase() !== filter) {
-                                        clazz += ' hide';
-                                    } else if (filter === "||") {
-                                        clazz += ' hide';
-                                    }
-                                }
+                                var rawDir = obj.data[item].dir;
+                                var dirPath = encodeURI(rawDir);
+                                var dirActions = "<div class=\"track-action-buttons\">" +
+                                    "<button type=\"button\" class=\"btn-track-action btn-add-track\" title=\"Listeye Ekle (+)\" onclick=\"event.stopPropagation(); socket.send('MPD_API_ADD_TRACK,' + decodeURI($(this).closest('tr').attr('uri')));\"><span class=\"glyphicon glyphicon-plus\"></span></button>" +
+                                    "</div>";
                                 $('#salamisandwich > tbody').append(
-                                    "<tr uri=\"" + encodeURI(obj.data[item].dir) + "\" class=\"" + clazz + "\">" +
-                                    "<td></td>" +
-                                    "<td style=\"text-align: center;\"><span class=\"glyphicon glyphicon-folder-open\" style=\"color: var(--ctp-peach);\"></span></td>" +
-                                    "<td colspan=\"3\"><a>" + basename(obj.data[item].dir) + "</a></td>" +
-                                    "<td class=\"text-right\"><span class=\"badge-playing\" style=\"background: rgba(250, 179, 135, 0.2); color: var(--ctp-peach);\">KLASÖR</span></td>" +
-                                    "<td></td></tr>"
+                                    "<tr uri=\"" + dirPath + "\" data-rawdir=\"" + rawDir.replace(/"/g, '&quot;') + "\" class=\"" + clazz + "\">" +
+                                    "<td class=\"song-title\"><span class=\"glyphicon glyphicon-folder-open\" style=\"color: var(--ctp-peach); margin-right: 8px;\"></span><a>" + basename(rawDir) + "</a></td>" +
+                                    "<td class=\"song-artist\"></td>" +
+                                    "<td class=\"song-album\"></td>" +
+                                    "<td class=\"song-duration-col\"></td>" +
+                                    "<td class=\"text-right song-actions-cell\"><button type='button' class='btn-track-action btn-add-track' title='Listeye Ekle (+)' onclick='event.stopPropagation(); socket.send(\"MPD_API_ADD_TRACK,\" + decodeURI($(this).closest(\"tr\").attr(\"uri\")))'><span class='glyphicon glyphicon-plus'></span></button></td>" +
+                                    "</tr>"
                                 );
                                 break;
                             case 'playlist':
@@ -346,33 +336,46 @@ function webSocketConnect() {
                                 if (filter !== "||") {
                                     clazz += ' hide';
                                 }
+                                var plistPath = encodeURI(obj.data[item].plist);
+                                var plistActions = "<div class=\"track-action-buttons\">" +
+                                    "<button type=\"button\" class=\"btn-track-action btn-add-track\" title=\"Listeye Ekle (+)\" onclick=\"event.stopPropagation(); socket.send('MPD_API_ADD_PLAYLIST,' + '" + plistPath + "');\"><span class=\"glyphicon glyphicon-plus\"></span></button>" +
+                                    "</div>";
                                 $('#salamisandwich > tbody').append(
-                                    "<tr uri=\"" + encodeURI(obj.data[item].plist) + "\" class=\"" + clazz + "\">" +
-                                    "<td></td>" +
-                                    "<td style=\"text-align: center;\"><span class=\"glyphicon glyphicon-list\" style=\"color: var(--ctp-mauve);\"></span></td>" +
-                                    "<td colspan=\"3\"><a>" + basename(obj.data[item].plist) + "</a></td>" +
-                                    "<td class=\"text-right\"><span class=\"badge-selected\">LISTE</span></td>" +
-                                    "<td></td></tr>"
+                                    "<tr uri=\"" + plistPath + "\" class=\"" + clazz + "\">" +
+                                    "<td class=\"song-title\"><span class=\"glyphicon glyphicon-list\" style=\"color: var(--ctp-mauve); margin-right: 8px;\"></span><a>" + basename(obj.data[item].plist) + "</a></td>" +
+                                    "<td class=\"song-artist\"></td>" +
+                                    "<td class=\"song-album\"></td>" +
+                                    "<td class=\"song-duration-col\"></td>" +
+                                    "<td class=\"text-right song-actions-cell\">" + plistActions + "</td>" +
+                                    "</tr>"
                                 );
                                 break;
                             case 'song':
                                 var minutes = Math.floor(obj.data[item].duration / 60);
                                 var seconds = obj.data[item].duration - minutes * 60;
+                                var songUri = encodeURI(obj.data[item].uri);
+
+                                var songActions = "<div class=\"track-action-buttons\">" +
+                                    "<button type=\"button\" class=\"btn-track-action btn-add-track\" title=\"Listeye Ekle (+)\" onclick=\"event.stopPropagation(); socket.send('MPD_API_ADD_TRACK,' + '" + songUri + "');\"><span class=\"glyphicon glyphicon-plus\"></span></button>" +
+                                    "</div>";
+
+                                var songTitle = obj.data[item].title || basename(decodeURI(songUri)) || 'Şarkı';
+                                var titleHtml = "<span class=\"glyphicon glyphicon-music\" style=\"color: var(--ctp-green); margin-right: 8px;\"></span>" + songTitle;
 
                                 if (typeof obj.data[item].artist === 'undefined') {
-                                    var details = "<td colspan=\"3\">" + obj.data[item].title + "</td>";
+                                    var details = "<td class=\"song-title song-title-full\" colspan=\"3\">" + titleHtml + "</td>";
                                 } else {
-                                    var details = "<td>" + obj.data[item].title + "</td><td class=\"song-artist\">" + obj.data[item].artist + "</td><td class=\"song-album\">" + obj.data[item].album + "</td>";
+                                    var details = "<td class=\"song-title\">" + titleHtml + "</td><td class=\"song-artist\">" + (obj.data[item].artist || '') + "</td><td class=\"song-album\">" + (obj.data[item].album || '') + "</td>";
                                 }
 
                                 $('#salamisandwich > tbody').append(
-                                    "<tr uri=\"" + encodeURI(obj.data[item].uri) + "\" class=\"song\">" +
-                                    "<td></td>" +
-                                    "<td style=\"text-align: center;\"><span class=\"glyphicon glyphicon-music\" style=\"color: var(--ctp-green);\"></span></td>" +
+                                    "<tr uri=\"" + songUri + "\" class=\"song song-row\">" +
                                     details +
-                                    "<td class=\"text-right font-mono\">" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds + "</td>" +
-                                    "<td></td></tr>"
+                                    "<td class=\"text-right font-mono song-duration-col\">" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds + "</td>" +
+                                    "<td class=\"text-right song-actions-cell\">" + songActions + "</td>" +
+                                    "</tr>"
                                 );
+
                                 break;
                             case 'wrap':
                                 if(current_app == 'browse') {
@@ -389,64 +392,23 @@ function webSocketConnect() {
 
                         if(pagination > 0)
                             $('#prev').removeClass('hide');
-
                     }
 
-                    function appendClickableIcon(appendTo, onClickAction, glyphicon) {
-                        $(appendTo).append(
-                            "<a role=\"button\" class=\"pull-right btn-group-hover\">" +
-                            "<span class=\"glyphicon glyphicon-" + glyphicon + "\"></span></a>")
-                            .find('a').click(function(e) {
-                                e.stopPropagation();
-                                socket.send(onClickAction + "," + decodeURI($(this).parents("tr").attr("uri")));
-                            $('.top-right').notify({
-                                message:{
-                                    text: "\"" + $('td:nth-last-child(3)', $(this).parents("tr")).text() + "\" added"
-                                } }).show();
-                            }).fadeTo('fast',1);
-                    }
-
-                    if ( isTouch ) {
-                        appendClickableIcon($("#salamisandwich > tbody > tr.dir > td:last-child"), 'MPD_API_ADD_TRACK', 'plus');
-                        appendClickableIcon($("#salamisandwich > tbody > tr.song > td:last-child"), 'MPD_API_ADD_TRACK', 'play');
-                    } else {
-                        $('#salamisandwich > tbody > tr').on({
-                            mouseenter: function() {
-                                if($(this).is(".dir")) 
-                                    appendClickableIcon($(this).children().last(), 'MPD_API_ADD_TRACK', 'plus');
-                                else if($(this).is(".song"))
-                                    appendClickableIcon($(this).children().last(), 'MPD_API_ADD_PLAY_TRACK', 'play');
-                            },
-                            mouseleave: function(){
-                                $(this).children().last().find("a").stop().remove();
+                    $('#salamisandwich > tbody > tr').off('click').on('click', function(e) {
+                        if ($(e.target).closest('button, input, .track-action-buttons').length) {
+                            return;
+                        }
+                        var $tr = $(this);
+                        if ($tr.hasClass('dir')) {
+                            pagination = 0;
+                            var rawdir = $tr.attr('data-rawdir') || decodeURI($tr.attr('uri'));
+                            if (window.app) {
+                                app.setLocation('#/browse/0/' + encodeURIComponent(rawdir));
                             }
-                        });
-                    };
-                    $('#salamisandwich > tbody > tr').on({
-                        click: function(e) {
-                            var $tr = $(this);
-                            if ($tr.hasClass('dir')) {
-                                pagination = 0;
-                                browsepath = $tr.attr("uri");
-                                $("#browse > a").attr("href", '#/browse/'+pagination+'/'+browsepath);
-                                if (window.app) {
-                                    app.setLocation('#/browse/'+pagination+'/'+browsepath);
-                                }
-                            } else if ($tr.hasClass('song')) {
-                                socket.send("MPD_API_ADD_TRACK," + decodeURI($tr.attr("uri")));
-                                $('.top-right').notify({
-                                    message:{
-                                        text: "\"" + $('td:nth-last-child(3)', $tr).text() + "\" added"
-                                    }
-                                }).show();
-                            } else if ($tr.hasClass('plist')) {
-                                socket.send("MPD_API_ADD_PLAYLIST," + decodeURI($tr.attr("uri")));
-                                $('.top-right').notify({
-                                    message:{
-                                        text: "\"" + $('td:nth-last-child(3)', $tr).text() + "\" added"
-                                    }
-                                }).show();
-                            }
+                        } else if ($tr.hasClass('song')) {
+                            socket.send('MPD_API_ADD_TRACK,' + decodeURI($tr.attr('uri')));
+                        } else if ($tr.hasClass('plist')) {
+                            socket.send('MPD_API_ADD_PLAYLIST,' + decodeURI($tr.attr('uri')));
                         }
                     });
 
@@ -469,9 +431,32 @@ function webSocketConnect() {
 
                     $('#volumeslider').slider(obj.data.volume);
                     $('#volume-text').text((obj.data.volume !== undefined ? obj.data.volume : 0) + '%');
-                    var progress = Math.floor(100*obj.data.elapsedTime/obj.data.totalTime);
-                    $('#progressbar').slider(progress);
-                    $('.progress-fill').css('width', (isNaN(progress) ? 0 : progress) + '%');
+
+                    var progress = (obj.data.totalTime > 0)
+                        ? Math.min(100, Math.max(0, (obj.data.elapsedTime / obj.data.totalTime) * 100))
+                        : 0;
+                    updateSeekbar(progress);
+
+                    // Start client-side ticker so bar moves smoothly between WebSocket updates
+                    clearInterval(window._seekTicker);
+                    if (obj.data.state === 'play' && obj.data.totalTime > 0) {
+                        var _elapsed = obj.data.elapsedTime;
+                        var _total   = obj.data.totalTime;
+                        window._seekTicker = setInterval(function() {
+                            _elapsed += 1;
+                            if (_elapsed > _total) {
+                                _elapsed = _total;
+                                clearInterval(window._seekTicker);
+                            }
+                            var pct = (_elapsed / _total) * 100;
+                            updateSeekbar(pct);
+                            var em = Math.floor(_elapsed / 60);
+                            var es = Math.floor(_elapsed % 60);
+                            var tm = Math.floor(_total / 60);
+                            var ts = Math.floor(_total % 60);
+                            $('#counter').text(em + ':' + (es < 10 ? '0' : '') + es + ' / ' + tm + ':' + (ts < 10 ? '0' : '') + ts);
+                        }, 1000);
+                    }
 
                     $('#counter')
                     .text(elapsed_minutes + ":" + 
@@ -483,7 +468,7 @@ function webSocketConnect() {
                     var activeTr = $('#salamisandwich > tbody > tr[trackid='+obj.data.currentsongid+']');
                     activeTr.addClass('active').css("font-weight", "bold");
                     if (activeTr.length && !activeTr.find('.eq-container').length) {
-                        activeTr.find('td:first-child').html('<div class="eq-container"><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div></div>');
+                        activeTr.find('td:first-child').prepend('<div class="eq-container"><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div></div>');
                     }
 
                     if(obj.data.random)
@@ -568,7 +553,7 @@ function webSocketConnect() {
                         notification += obj.data.artist + "<br />";
                     }
 
-                    if ($.cookie("notification") === "true")
+                    if (typeof $.cookie === 'function' && $.cookie("notification") === "true")
                         songNotify(obj.data.title, obj.data.artist, obj.data.album );
                     else
                         $('.top-right').notify({
@@ -625,33 +610,8 @@ function webSocketConnect() {
 
 function get_appropriate_ws_url()
 {
-    var pcol;
-    var u = document.URL;
-    var separator;
-
-    /*
-    /* We open the websocket encrypted if this page came on an
-    /* https:// url itself, otherwise unencrypted
-    /*/
-
-    if (u.substring(0, 5) == "https") {
-        pcol = "wss://";
-        u = u.substr(8);
-    } else {
-        pcol = "ws://";
-        if (u.substring(0, 4) == "http")
-            u = u.substr(7);
-    }
-
-    u = u.split('#');
-
-    if (/\/$/.test(u[0])) {
-        separator = "";
-    } else {
-        separator = "/";
-    }
-
-    return pcol + u[0] + separator + "ws";
+    var pcol = (location.protocol === 'https:') ? 'wss://' : 'ws://';
+    return pcol + location.host + '/ws';
 }
 
 var updateVolumeIcon = function(volume)
@@ -672,13 +632,13 @@ var updateVolumeIcon = function(volume)
 var updatePlayIcon = function(state)
 {
     if(state == 1) { // stop
-        $("#play-icon").text('▶').addClass("glyphicon-play").removeClass("glyphicon-pause");
+        $("#play-icon").html('').addClass("glyphicon-play").removeClass("glyphicon-pause");
         $('#vinyl-disk').removeClass('spinning');
     } else if(state == 2) { // pause
-        $("#play-icon").text('▶').addClass("glyphicon-play").removeClass("glyphicon-pause");
+        $("#play-icon").html('').addClass("glyphicon-play").removeClass("glyphicon-pause");
         $('#vinyl-disk').removeClass('spinning');
     } else { // play
-        $("#play-icon").text('⏸').addClass("glyphicon-pause").removeClass("glyphicon-play");
+        $("#play-icon").html('').addClass("glyphicon-pause").removeClass("glyphicon-play");
         $('#vinyl-disk').addClass('spinning');
     }
 }
@@ -711,10 +671,10 @@ function trash(tr) {
 }
 
 function renumber_table(tableID,item) {
-    was = item.children("td").first().text();//Check if first item exists!
-    is = item.index() + 1;//maybe add pagination
+    var was = parseInt(item.attr("data-pos") || item.children("td").eq(1).text(), 10);
+    var is = item.index() + 1;
 
-    if (was != is) {
+    if (!isNaN(was) && was != is) {
         socket.send("MPD_API_MOVE_TRACK," + was + "," + is);
         socket.send('MPD_API_GET_QUEUE,'+pagination);
     }
@@ -1075,87 +1035,107 @@ function dirble_load_stations() {
 }
 
 function set_filter (c) {
-    filter = c;
-
-    $.each($('#salamisandwich > tbody > tr.dir'), function(i, line) {
-        var first = $(line).attr('uri')[0];
-
-        if (filter === undefined) {
-            $(line).removeClass('hide');
-        }
-
-        else if (filter === "#") {
-            if (!isNaN(first)) {
-                $(line).removeClass('hide');
-            } else {
-                $(line).addClass('hide');
-            }
-        }
-
-        else if (filter >= "A" && filter <= "Z") {
-            if (first.toUpperCase() === filter) {
-                $(line).removeClass('hide');
-            } else {
-                $(line).addClass('hide');
-            }
-        }
-
-        else if (filter === "||") {
-            $(line).addClass('hide');
-        }
-    });
-
-    $.each($('#salamisandwich > tbody > tr.plist'), function(i, line) {
-        if (filter === undefined) {
-            $(line).removeClass('hide');
-        } else if (filter === "||") {
-            $(line).removeClass('hide');
-        } else {
-            $(line).addClass('hide');
-        }
-    });
+    return;
 }
 
 function add_filter () {
-    $('#filter').append('&nbsp;<a onclick="set_filter(\'#\')" href="#/browse/0/">#</a>');
-
-    for (i = 65; i <= 90; i++) {
-        var c = String.fromCharCode(i);
-        $('#filter').append('&nbsp;<a onclick="set_filter(\'' + c + '\')" href="#/browse/0/">' + c + '</a>');
-    }
-
-    $('#filter').append('&nbsp;<a onclick="set_filter(\'||\')" href="#/browse/0/" class="glyphicon glyphicon-list"></a>');
-}
-
-function toggleSelectAllTracks(master) {
-    $('.track-checkbox').prop('checked', $(master).is(':checked'));
-    updateBatchToolbar();
+    return;
 }
 
 function updateBatchToolbar() {
-    var checkedCount = $('.track-checkbox:checked').length;
-    if (checkedCount > 0) {
-        $('#batch-count-badge').text(checkedCount + ' selected');
+    var selectedCount = $('#salamisandwich > tbody > tr.selected').length;
+    if (selectedCount > 0) {
+        $('#batch-count-badge').text(selectedCount + ' seçildi');
         $('#batch-count-indicator').removeClass('hide');
-        $('#btn-batch-queue-next, #btn-batch-delete').removeClass('disabled').prop('disabled', false);
+        $('#btn-batch-queue-next, #btn-batch-delete, #btn-batch-move-up, #btn-batch-move-down').removeClass('disabled').prop('disabled', false);
     } else {
         $('#batch-count-indicator').addClass('hide');
-        $('#btn-batch-queue-next, #btn-batch-delete').addClass('disabled').prop('disabled', true);
-        $('#select-all-tracks').prop('checked', false);
+        $('#btn-batch-queue-next, #btn-batch-delete, #btn-batch-move-up, #btn-batch-move-down').addClass('disabled').prop('disabled', true);
     }
 }
 
+function moveTrackUp(pos) {
+    if (pos <= 1) return;
+    if (typeof socket !== 'undefined' && socket && socket.readyState === 1) {
+        socket.send("MPD_API_MOVE_TRACK," + pos + "," + (pos - 1));
+        socket.send('MPD_API_GET_QUEUE,' + pagination);
+    }
+}
+
+function moveTrackDown(pos) {
+    if (typeof socket !== 'undefined' && socket && socket.readyState === 1) {
+        socket.send("MPD_API_MOVE_TRACK," + pos + "," + (pos + 1));
+        socket.send('MPD_API_GET_QUEUE,' + pagination);
+    }
+}
+
+function queueNextTrackId(songId, pos1Based) {
+    var currentPos = (current_song && current_song.songpos !== undefined && current_song.songpos >= 0) ? current_song.songpos + 1 : 1;
+    var targetPos = currentPos + 1;
+    if (targetPos === pos1Based) return;
+    socket.send("MPD_API_MOVE_TRACK," + pos1Based + "," + targetPos);
+    socket.send('MPD_API_GET_QUEUE,' + pagination);
+}
+
+function addSongQueueNext(uri) {
+    socket.send("MPD_API_ADD_TRACK," + decodeURI(uri));
+    setTimeout(function() {
+        var currentPos = (current_song && current_song.songpos !== undefined && current_song.songpos >= 0) ? current_song.songpos + 1 : 1;
+        var total = $('#salamisandwich > tbody > tr').length;
+        if (total > 0) {
+            socket.send("MPD_API_MOVE_TRACK," + total + "," + (currentPos + 1));
+            socket.send('MPD_API_GET_QUEUE,' + pagination);
+        }
+    }, 150);
+}
+
+function moveSelectedUp() {
+    var selectedRows = $('#salamisandwich > tbody > tr.selected');
+    if (!selectedRows.length) return;
+
+    var rows = selectedRows.map(function() {
+        var pos = parseInt($(this).attr('data-pos'), 10);
+        return { el: this, pos: pos };
+    }).get();
+
+    rows.sort(function(a, b) { return a.pos - b.pos; });
+
+    rows.forEach(function(item) {
+        if (item.pos > 1) {
+            socket.send("MPD_API_MOVE_TRACK," + item.pos + "," + (item.pos - 1));
+        }
+    });
+    socket.send('MPD_API_GET_QUEUE,' + pagination);
+}
+
+function moveSelectedDown() {
+    var selectedRows = $('#salamisandwich > tbody > tr.selected');
+    if (!selectedRows.length) return;
+
+    var rows = selectedRows.map(function() {
+        var pos = parseInt($(this).attr('data-pos'), 10);
+        return { el: this, pos: pos };
+    }).get();
+
+    rows.sort(function(a, b) { return b.pos - a.pos; });
+
+    rows.forEach(function(item) {
+        socket.send("MPD_API_MOVE_TRACK," + item.pos + "," + (item.pos + 1));
+    });
+    socket.send('MPD_API_GET_QUEUE,' + pagination);
+}
+
 function queueNextBatch() {
-    var checked = $('.track-checkbox:checked');
-    if (!checked.length) {
+    var selectedRows = $('#salamisandwich > tbody > tr.selected');
+    if (!selectedRows.length) {
         queueNextSingle();
         return;
     }
 
     var currentPos = (current_song && current_song.songpos !== undefined && current_song.songpos >= 0) ? current_song.songpos : 0;
 
-    checked.each(function(index, el) {
-        var songId = parseInt($(el).val(), 10);
+    selectedRows.each(function(index, el) {
+        var songId = parseInt($(el).attr('trackid'), 10);
         if (!isNaN(songId)) {
             var targetPos = currentPos + index;
             var payload = JSON.stringify({
@@ -1169,22 +1149,22 @@ function queueNextBatch() {
         }
     });
 
-    $('.track-checkbox, #select-all-tracks').prop('checked', false);
+    $('#salamisandwich > tbody > tr.selected').removeClass('selected');
     updateBatchToolbar();
 }
 
 function deleteBatch() {
-    var checked = $('.track-checkbox:checked');
-    if (!checked.length) return;
+    var selectedRows = $('#salamisandwich > tbody > tr.selected');
+    if (!selectedRows.length) return;
 
-    checked.each(function(index, el) {
-        var songId = parseInt($(el).val(), 10);
+    selectedRows.each(function(index, el) {
+        var songId = parseInt($(el).attr('trackid'), 10);
         if (!isNaN(songId) && typeof socket !== 'undefined') {
             socket.send('MPD_API_RM_TRACK,' + songId);
         }
     });
 
-    $('.track-checkbox, #select-all-tracks').prop('checked', false);
+    $('#salamisandwich > tbody > tr.selected').removeClass('selected');
     updateBatchToolbar();
 }
 
@@ -1247,11 +1227,35 @@ function closeSidebar() {
     $('.ytm-sidebar-overlay').removeClass('open');
 }
 
+function playSingleTrack(id) {
+    if (typeof socket !== 'undefined' && socket && socket.readyState === 1) {
+        $('#salamisandwich > tbody > tr').removeClass('active');
+        $('#salamisandwich > tbody > tr[trackid="' + id + '"]').addClass('active');
+        socket.send('MPD_API_PLAY_TRACK,' + id);
+    }
+}
+
+$(document).on('click', '.btn-play-track', function(e) {
+    e.stopPropagation();
+    var $tr = $(this).closest('tr');
+    var trackId = $tr.attr('trackid');
+    if (trackId) {
+        playSingleTrack(trackId);
+    }
+});
+
+window.playSingleTrack = playSingleTrack;
+window.trash = trash;
+window.addSongQueueNext = addSongQueueNext;
+window.clickPlay = clickPlay;
+window.clickLove = clickLove;
 window.queueNext = queueNext;
 window.queueNextBatch = queueNextBatch;
 window.deleteBatch = deleteBatch;
-window.toggleSelectAllTracks = toggleSelectAllTracks;
-window.updateBatchToolbar = updateBatchToolbar;
+window.moveTrackUp = moveTrackUp;
+window.moveTrackDown = moveTrackDown;
+window.moveSelectedUp = moveSelectedUp;
+window.moveSelectedDown = moveSelectedDown;
 window.toggleSidebar = toggleSidebar;
 window.closeSidebar = closeSidebar;
 
@@ -1280,6 +1284,32 @@ $(document).on('keydown', function(event) {
 
     var key = event.key;
 
+    // ncmpcpp / Custom Move Track Up (Shift+K / Alt+Up / Ctrl+Up)
+    if ((event.shiftKey && (key === 'K' || key === 'k')) || ((event.ctrlKey || event.altKey) && key === 'ArrowUp')) {
+        event.preventDefault();
+        var selectedRow = $('#salamisandwich > tbody > tr.selected');
+        if (selectedRow.length && selectedRow.attr('data-pos')) {
+            var pos = parseInt(selectedRow.attr('data-pos'), 10);
+            moveTrackUp(pos);
+        } else {
+            moveSelectedUp();
+        }
+        return;
+    }
+
+    // ncmpcpp / Custom Move Track Down (Shift+J / Alt+Down / Ctrl+Down)
+    if ((event.shiftKey && (key === 'J' || key === 'j')) || ((event.ctrlKey || event.altKey) && key === 'ArrowDown')) {
+        event.preventDefault();
+        var selectedRow = $('#salamisandwich > tbody > tr.selected');
+        if (selectedRow.length && selectedRow.attr('data-pos')) {
+            var pos = parseInt(selectedRow.attr('data-pos'), 10);
+            moveTrackDown(pos);
+        } else {
+            moveSelectedDown();
+        }
+        return;
+    }
+
     if (key === '/') {
         event.preventDefault();
         $('#search input').focus();
@@ -1291,7 +1321,8 @@ $(document).on('keydown', function(event) {
         return;
     }
 
-    if (key === 'j' || key === 'J' || key === 'ArrowDown') {
+    // ncmpcpp Navigation Down (j / ArrowDown)
+    if (key === 'j' || key === 'ArrowDown') {
         event.preventDefault();
         var rows = $('#salamisandwich > tbody > tr');
         if (!rows.length) return;
@@ -1311,7 +1342,8 @@ $(document).on('keydown', function(event) {
         return;
     }
 
-    if (key === 'k' || key === 'K' || key === 'ArrowUp') {
+    // ncmpcpp Navigation Up (k / ArrowUp)
+    if (key === 'k' || key === 'ArrowUp') {
         event.preventDefault();
         var rows = $('#salamisandwich > tbody > tr');
         if (!rows.length) return;
@@ -1334,21 +1366,47 @@ $(document).on('keydown', function(event) {
     if (key === 'Enter') {
         var selectedRow = $('#salamisandwich > tbody > tr.selected');
         if (selectedRow.length) {
-            var trackId = selectedRow.attr('trackid');
-            if (trackId && typeof socket !== 'undefined') {
-                $('#salamisandwich > tbody > tr').removeClass('active');
-                selectedRow.addClass('active');
-                socket.send('MPD_API_PLAY_TRACK,' + trackId);
+            if (selectedRow.hasClass('dir')) {
+                selectedRow.click();
+            } else if (selectedRow.attr('trackid')) {
+                var trackId = selectedRow.attr('trackid');
+                if (trackId && typeof socket !== 'undefined') {
+                    $('#salamisandwich > tbody > tr').removeClass('active');
+                    selectedRow.addClass('active');
+                    socket.send('MPD_API_PLAY_TRACK,' + trackId);
+                }
             }
         }
         return;
     }
 
+    // ncmpcpp / Custom Clear Queue (c / C)
+    if (key === 'c' || key === 'C') {
+        if (typeof socket !== 'undefined') {
+            socket.send('MPD_API_RM_ALL');
+        }
+        return;
+    }
+
+    // ncmpcpp Add Item (a / A)
+    if (key === 'a' || key === 'A') {
+        var selectedRow = $('#salamisandwich > tbody > tr.selected');
+        if (selectedRow.length) {
+            var addBtn = selectedRow.find('.btn-add-track');
+            if (addBtn.length) {
+                addBtn.click();
+            }
+        }
+        return;
+    }
+
+    // ncmpcpp / Custom Queue Next (ö / Ö)
     if (key === 'ö' || key === 'Ö') {
         queueNext();
         return;
     }
 
+    // ncmpcpp Delete Track (d / D / Delete)
     if (key === 'd' || key === 'D' || key === 'Delete' || key === 'Backspace') {
         var selectedRow = $('#salamisandwich > tbody > tr.selected');
         if (selectedRow.length) {
@@ -1360,6 +1418,7 @@ $(document).on('keydown', function(event) {
         return;
     }
 
+    // ncmpcpp Space -> Play / Pause
     if (key === ' ' || key === 'Spacebar') {
         event.preventDefault();
         if (typeof clickPlay === 'function') {
@@ -1368,17 +1427,45 @@ $(document).on('keydown', function(event) {
         return;
     }
 
-    if (key === 'n' || key === 'N') {
+    // ncmpcpp Next / Prev Track (n / > and b / <)
+    if (key === 'n' || key === 'N' || key === '>') {
         if (typeof socket !== 'undefined') {
             socket.send('MPD_API_SET_NEXT');
         }
         return;
     }
 
-    if (key === 'b' || key === 'B') {
+    if (key === 'b' || key === 'B' || key === '<') {
         if (typeof socket !== 'undefined') {
             socket.send('MPD_API_SET_PREV');
         }
+        return;
+    }
+
+    // ncmpcpp Toggles: z (random), r (repeat), y (single), x (consume)
+    if (key === 'z' || key === 'Z') {
+        $('#btnrandom').click();
+        return;
+    }
+
+    if (key === 'r' || key === 'R') {
+        $('#btnrepeat').click();
+        return;
+    }
+
+    if (key === 'y' || key === 'Y') {
+        $('#btnsingle').click();
+        return;
+    }
+
+    if (key === 'x' || key === 'X') {
+        $('#btnconsume').click();
+        return;
+    }
+
+    // ncmpcpp Update DB (u / U)
+    if (key === 'u' || key === 'U') {
+        updateDB();
         return;
     }
 
@@ -1456,8 +1543,8 @@ $(document).ready(function() {
         }
     });
 
-    // Mouse wheel over Progress Bar seeks +/- 5 seconds
-    $('.ytm-progress-edge').on('wheel', function(e) {
+    // Mouse wheel over Seekbar seeks +/- 5 seconds
+    $(document).on('wheel', '#seekbar, #seekbar-queue', function(e) {
         e.preventDefault();
         var delta = e.originalEvent.deltaY;
         if (current_song && current_song.currentSongId >= 0 && current_song.totalTime) {
@@ -1470,3 +1557,11 @@ $(document).ready(function() {
         }
     });
 });
+
+// Update both seekbars (player card + playlist queue)
+function updateSeekbar(pct) {
+    pct = isNaN(pct) ? 0 : Math.min(100, Math.max(0, pct));
+    $('#seekbar-fill').css('width', pct + '%');
+    $('#seekbar-queue-fill').css('width', pct + '%');
+}
+window.updateSeekbar = updateSeekbar;

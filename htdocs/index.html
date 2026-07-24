@@ -7,60 +7,63 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/bootstrap.css">
   <link rel="stylesheet" href="css/mpd.css">
 </head>
 <body>
 
   <!-- Top Navigation Header -->
   <header class="app-header">
-    <div class="header-left">
-      <a class="brand-title" href="#/" onclick="if(window.app) { app.setLocation('#/'); } return false;">
-        <span>ympd</span>
-        <span class="version-badge">Catppuccin Ghibli Edition</span>
-      </a>
+    <div class="app-header-inner">
+      <div class="header-left">
+        <a class="brand-title" href="#/" onclick="if(window.app) { app.setLocation('#/'); } return false;">
+          <span>ympd</span>
+          <span class="version-badge">Ghibli</span>
+        </a>
 
-      <!-- Navigation Tabs: Queue, Media Library, Radio -->
-      <nav class="nav-tabs-container">
-        <a id="nav-queue" class="nav-tab-pill active" href="#/" onclick="if(window.app) { app.setLocation('#/'); } return false;">📻 Sıra</a>
-        <a id="nav-browse" class="nav-tab-pill" href="#/browse/0/" onclick="if(window.app) { app.setLocation('#/browse/0/'); } return false;">📁 Müzik Kütüphanesi</a>
-        <a id="nav-dirble" class="nav-tab-pill hide" href="#/dirble/" onclick="if(window.app) { app.setLocation('#/dirble/'); } return false;">📻 Radyolar</a>
-      </nav>
-    </div>
-
-    <div class="header-center">
-      <form id="search" class="navbar-form" role="search" style="margin: 0;">
-        <div class="form-group" style="margin: 0; width: 100%;">
-          <input type="text" class="form-control" placeholder="Şarkı, albüm veya sanatçı ara (/)...">
-        </div>
-      </form>
-    </div>
-
-    <div class="header-right">
-      <div class="hotkey-pill">
-        <span>Sıradaki Yap: Tuş</span>
-        <kbd class="key-badge">ö</kbd>
+        <!-- Navigation Tabs: Queue, Media Library, Radio -->
+        <ul id="nav_links" class="nav-tabs-container" style="padding-left: 0; margin-bottom: 0;">
+          <li id="playlist" style="list-style:none; display:inline-block;">
+            <a id="nav-queue" class="nav-tab-pill active" href="#/" onclick="if(window.app) { app.setLocation('#/'); } return false;">📻 Sıra</a>
+          </li>
+          <li id="browse" style="list-style:none; display:inline-block;">
+            <a id="nav-browse" class="nav-tab-pill" href="#/browse/0/" onclick="if(window.app) { app.setLocation('#/browse/0/'); } return false;">📁 Kütüphane</a>
+          </li>
+          <li id="dirble" class="hide" style="list-style:none; display:inline-block;">
+            <a id="nav-dirble" class="nav-tab-pill" href="#/dirble/" onclick="if(window.app) { app.setLocation('#/dirble/'); } return false;">📻 Radyolar</a>
+          </li>
+        </ul>
       </div>
 
-      <button type="button" class="btn-action-ghost" data-toggle="modal" data-target="#shortcutModal" title="Kısayollar (?)">
-        <span class="glyphicon glyphicon-question-sign"></span>
-      </button>
-      <button type="button" class="btn-action-ghost" data-toggle="modal" data-target="#addstream" title="Stream Ekle">
-        <span class="glyphicon glyphicon-plus"></span> Stream
-      </button>
-      <button type="button" class="btn-action-ghost" onclick="updateDB();" title="Veritabanını Güncelle">
-        <span class="glyphicon glyphicon-refresh"></span>
-      </button>
-      <button type="button" class="btn-action-ghost" data-toggle="modal" data-target="#settings" onclick="getHost();" title="Ayarlar">
-        <span class="glyphicon glyphicon-cog"></span>
-      </button>
+      <div class="header-center">
+        <form id="search" class="navbar-form" role="search" style="margin: 0;" onsubmit="return false;">
+          <div class="form-group" style="margin: 0; width: 100%;">
+            <input type="text" class="form-control" placeholder="Ara (/)...">
+          </div>
+        </form>
+      </div>
+
+      <div class="header-right">
+        <button type="button" class="btn-action-ghost" data-toggle="modal" data-target="#shortcutModal" title="Kısayollar (?)">
+          <span class="glyphicon glyphicon-question-sign"></span>
+        </button>
+        <button type="button" class="btn-action-ghost" data-toggle="modal" data-target="#addstream" title="Stream Ekle">
+          <span class="glyphicon glyphicon-plus"></span>
+        </button>
+        <button type="button" class="btn-action-ghost" onclick="updateDB();" title="Veritabanını Güncelle">
+          <span class="glyphicon glyphicon-refresh"></span>
+        </button>
+        <button type="button" class="btn-action-ghost" data-toggle="modal" data-target="#settings" onclick="getHost();" title="Ayarlar">
+          <span class="glyphicon glyphicon-cog"></span>
+        </button>
+      </div>
     </div>
   </header>
 
   <!-- Main 2-Column Grid Layout -->
   <main class="main-layout">
     
-    <!-- Left Column: Now Playing & Controls -->
+    <!-- Left Column: Now Playing & Controls (Fixed Player on Mobile) -->
     <section class="now-playing-card">
       <div class="vinyl-wrapper">
         <div id="vinyl-disk" class="vinyl-disk spinning">
@@ -69,46 +72,77 @@
         <span class="mpd-badge">MPD 6600</span>
       </div>
 
-      <div class="track-info">
-        <h2 id="currenttrack">Çalan şarkı yok</h2>
-        <p id="artist">Bilinmeyen Sanatçı</p>
-        <span id="album">Bilinmeyen Albüm</span>
-      </div>
-
       <!-- Scrubber -->
       <div class="progress-container">
-        <div id="progressbar" class="progress-bar">
-          <div class="progress-fill" style="width: 0%;"></div>
+        <div id="seekbar" class="seekbar-track">
+          <div id="seekbar-fill" class="seekbar-fill" style="width: 0%;"></div>
         </div>
         <div class="time-labels">
           <span id="counter">0:00 / 0:00</span>
+
+          <div class="mode-toggles-inline">
+            <button id="btnrandom" type="button" class="btn-mode-icon" onclick="socket.send('MPD_API_SET_RANDOM,' + ($(this).hasClass('active') ? 0 : 1));" title="Rastgele (z)"><span class="glyphicon glyphicon-random"></span></button>
+            <button id="btnrepeat" type="button" class="btn-mode-icon" onclick="socket.send('MPD_API_SET_REPEAT,' + ($(this).hasClass('active') ? 0 : 1));" title="Tekrar (r)"><span class="glyphicon glyphicon-repeat"></span></button>
+            <button id="btnsingle" type="button" class="btn-mode-icon" onclick="socket.send('MPD_API_SET_SINGLE,' + ($(this).hasClass('active') ? 0 : 1));" title="Tek Şarkı (y)"><span class="glyphicon glyphicon-refresh"></span></button>
+            <button id="btnconsume" type="button" class="btn-mode-icon" onclick="socket.send('MPD_API_SET_CONSUME,' + ($(this).hasClass('active') ? 0 : 1));" title="Tüket (x)"><span class="glyphicon glyphicon-fire"></span></button>
+            <button id="btnlove" type="button" class="btn-mode-icon" onclick="clickLove();" title="Favori (Love)"><span class="glyphicon glyphicon-heart"></span></button>
+          </div>
         </div>
       </div>
 
-      <!-- Player Controls -->
-      <div class="controls-row">
-        <button type="button" class="btn-icon" onclick="socket.send('MPD_API_SET_PREV');" title="Önceki (B)">⏮</button>
-        <button type="button" class="btn-play-main" onclick="clickPlay();" title="Oynat / Duraklat (Space)">
-          <span id="play-icon" class="glyphicon glyphicon-play"></span>
-        </button>
-        <button type="button" class="btn-icon" onclick="socket.send('MPD_API_SET_STOP');" title="Durdur">⏹</button>
-        <button type="button" class="btn-icon" onclick="socket.send('MPD_API_SET_NEXT');" title="Sonraki (N)">⏭</button>
+      <div class="player-main-row">
+        <div class="track-info">
+          <h2 id="currenttrack">Çalan şarkı yok</h2>
+          <p id="artist">Bilinmeyen Sanatçı</p>
+          <span id="album">Bilinmeyen Albüm</span>
+        </div>
+
+        <!-- Player Controls -->
+        <div class="controls-row">
+          <button type="button" class="btn-icon" onclick="socket.send('MPD_API_SET_PREV');" title="Önceki (B)">⏮</button>
+          <button type="button" class="btn-play-main" onclick="clickPlay();" title="Oynat / Duraklat (Space)">
+            <span id="play-icon" class="glyphicon glyphicon-play"></span>
+          </button>
+          <button type="button" class="btn-icon" onclick="socket.send('MPD_API_SET_STOP');" title="Durdur">⏹</button>
+          <button type="button" class="btn-icon" onclick="socket.send('MPD_API_SET_NEXT');" title="Sonraki (N)">⏭</button>
+          <button type="button" class="btn-icon btn-expand-mobile" onclick="$('.extra-controls-wrapper').toggleClass('show-mobile');" title="Diğer Kontroller">
+            <span class="glyphicon glyphicon-option-horizontal"></span>
+          </button>
+        </div>
       </div>
 
-      <!-- Volume Row -->
-      <div class="volume-row">
-        <span id="volume-icon" style="cursor: pointer;">🔊</span>
-        <div id="volumeslider" class="volume-slider"></div>
-        <span id="volume-text" class="volume-text">--%</span>
-      </div>
+      <div class="extra-controls-wrapper">
+        <!-- Volume Row -->
+        <div class="volume-row">
+          <span id="volume-icon" style="cursor: pointer;">🔊</span>
+          <div id="volumeslider" class="volume-slider"></div>
+          <span id="volume-text" class="volume-text">--%</span>
+        </div>
 
-      <!-- Playback Toggles -->
-      <div class="toggles-row">
-        <button id="btnrandom" type="button" class="btn-toggle" onclick="socket.send('MPD_API_SET_RANDOM,' + ($(this).hasClass('active') ? 0 : 1));">Random</button>
-        <button id="btnrepeat" type="button" class="btn-toggle" onclick="socket.send('MPD_API_SET_REPEAT,' + ($(this).hasClass('active') ? 0 : 1));">Repeat</button>
-        <button id="btnsingle" type="button" class="btn-toggle" onclick="socket.send('MPD_API_SET_SINGLE,' + ($(this).hasClass('active') ? 0 : 1));">Single</button>
-        <button id="btnconsume" type="button" class="btn-toggle" onclick="socket.send('MPD_API_SET_CONSUME,' + ($(this).hasClass('active') ? 0 : 1));">Consume</button>
-        <button id="btnlove" type="button" class="btn-toggle" onclick="clickLove();">❤️ Love</button>
+        <!-- Action Toolbar -->
+        <div class="toggles-row">
+          <!-- Icon-Only Batch & Queue Actions Fixed in Footer -->
+          <div class="batch-actions-bar">
+            <button id="btn-batch-move-up" type="button" onclick="moveSelectedUp()" class="btn-track-action disabled" disabled title="Seçilenleri Yukarı Taşı (Shift+K)">
+              <span class="glyphicon glyphicon-chevron-up"></span>
+            </button>
+            <button id="btn-batch-queue-next" type="button" onclick="queueNextBatch()" class="btn-track-action disabled" disabled title="Sıradaki Yap (ö / ⏭)">
+              <span class="glyphicon glyphicon-step-forward"></span>
+            </button>
+            <button id="btn-batch-move-down" type="button" onclick="moveSelectedDown()" class="btn-track-action disabled" disabled title="Seçilenleri Aşağı Taşı (Shift+J)">
+              <span class="glyphicon glyphicon-chevron-down"></span>
+            </button>
+            <button id="btn-batch-delete" type="button" onclick="deleteBatch()" class="btn-track-action disabled" disabled title="Seçilenleri Sil (d / Delete)">
+              <span class="glyphicon glyphicon-trash"></span>
+            </button>
+            <button id="btn-clear-playlist" type="button" class="btn-track-action" onclick="if(confirm('Çalma listesi sıfırlansın mı?')) socket.send('MPD_API_RM_ALL');" title="Listeyi Sıfırla / Temizle (c)">
+              <span class="glyphicon glyphicon-remove-circle" style="color: var(--ctp-red);"></span>
+            </button>
+            <a href="#" data-toggle="modal" data-target="#savequeue" class="btn-track-action" title="Listeyi Kaydet">
+              <span class="glyphicon glyphicon-floppy-disk"></span>
+            </a>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -122,39 +156,28 @@
           <button id="add-all-songs" type="button" class="btn-action-ghost hide" style="border-color: var(--ctp-green); color: var(--ctp-green);">
             <span class="glyphicon glyphicon-plus"></span> Hepsini Ekle
           </button>
-          <button id="btn-batch-queue-next" type="button" onclick="queueNextBatch()" class="btn-queue-next">
-            Sıradaki Yap <kbd class="btn-key">ö</kbd>
-          </button>
-          <button id="btn-batch-delete" type="button" onclick="deleteBatch()" class="btn-action-ghost disabled" disabled>
-            Sil
-          </button>
-          <button type="button" class="btn-action-ghost" onclick="socket.send('MPD_API_RM_ALL');" title="Listeyi Temizle">
-            Temizle
-          </button>
-          <a href="#" data-toggle="modal" data-target="#savequeue" class="btn-action-ghost" title="Listeyi Kaydet">
-            Kaydet
-          </a>
+        </div>
+      </div>
+
+      <!-- Playlist Queue Timeline Progress Scrubber Bar -->
+      <div class="queue-timeline-container" style="margin-bottom: 12px;">
+        <div id="seekbar-queue" class="seekbar-track">
+          <div id="seekbar-queue-fill" class="seekbar-fill" style="width: 0%;"></div>
         </div>
       </div>
 
       <!-- Directory Breadcrumbs Container -->
       <ol id="breadcrump" class="breadcrumb catppuccin-breadcrumb hide"></ol>
 
-      <div id="filter" style="margin-bottom: 14px; overflow: hidden;" class="hide"></div>
-
       <div class="table-responsive">
         <table id="salamisandwich" class="song-table">
           <thead>
             <tr>
-              <th style="width: 36px; text-align: center;">
-                <input type="checkbox" id="select-all-tracks" onclick="toggleSelectAllTracks(this)" title="Tümünü Seç">
-              </th>
-              <th style="width: 48px;">#</th>
-              <th>Şarkı / Klasör Adı</th>
+              <th>Şarkı Adı</th>
               <th>Sanatçı</th>
               <th>Albüm</th>
               <th class="text-right">Süre</th>
-              <th class="text-center">Durum</th>
+              <th class="text-right">İşlemler</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -309,11 +332,14 @@
     </div>
   </div>
 
-  <script src="js/jquery.min.js"></script>
+  <script src="js/jquery-1.10.2.min.js"></script>
+  <script src="js/jquery.cookie.js"></script>
+  <script src="js/jquery-ui-sortable.min.js"></script>
+  <script src="js/modernizr-custom.js"></script>
   <script src="js/bootstrap.min.js"></script>
+  <script src="js/bootstrap-notify.js"></script>
   <script src="js/bootstrap-slider.js"></script>
-  <script src="js/jquery.notify.min.js"></script>
-  <script src="js/sammy.min.js"></script>
+  <script src="js/sammy.js"></script>
   <script src="js/mpd.js"></script>
 </body>
 </html>

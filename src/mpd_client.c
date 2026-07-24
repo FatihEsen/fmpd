@@ -201,15 +201,18 @@ int callback_mpd(struct mg_connection *c)
             if(strcmp(strtok(p_charbuf, ","), "MPD_API_GET_BROWSE"))
                 goto out_browse;
 
-            uint_buf = strtoul(strtok(NULL, ","), NULL, 10);
-            if((token = strtok(NULL, ",")) == NULL)
-                goto out_browse;
+            token = strtok(NULL, ",");
+            if (token != NULL)
+                uint_buf = strtoul(token, NULL, 10);
+            else
+                uint_buf = 0;
 
-			free(p_charbuf);
+            token = strtok(NULL, ",");
+            free(p_charbuf);
             p_charbuf = strdup(c->content);
-            n = mpd_put_browse(mpd.buf, get_arg2(p_charbuf), uint_buf);
+            n = mpd_put_browse(mpd.buf, token ? get_arg2(p_charbuf) : "", uint_buf);
 out_browse:
-			free(p_charbuf);
+            free(p_charbuf);
             break;
         case MPD_API_ADD_TRACK:
             p_charbuf = strdup(c->content);
@@ -487,17 +490,39 @@ void mpd_poll(struct mg_server *s)
             break;
 
         case MPD_CONNECTED:
-            mpd.buf_size = mpd_put_state(mpd.buf, &mpd.song_id, &mpd.queue_version);
-            for (struct mg_connection *c = mg_next(s, NULL); c != NULL; c = mg_next(s, c))
             {
-                c->callback_param = NULL;
-                mpd_notify_callback(c, MG_POLL);
-            }
-            mpd.buf_size = mpd_put_outputs(mpd.buf, 0);
-            for (struct mg_connection *c = mg_next(s, NULL); c != NULL; c = mg_next(s, c))
-            {
-                c->callback_param = NULL;
-                mpd_notify_callback(c, MG_POLL);
+                int old_song_id = mpd.song_id;
+                unsigned old_queue_version = mpd.queue_version;
+
+                mpd.buf_size = mpd_put_state(mpd.buf, &mpd.song_id, &mpd.queue_version);
+                for (struct mg_connection *c = mg_next(s, NULL); c != NULL; c = mg_next(s, c))
+                {
+                    c->callback_param = NULL;
+                    mpd_notify_callback(c, MG_POLL);
+                }
+
+                if (old_song_id != mpd.song_id && mpd.song_id >= 0)
+                {
+                    mpd.buf_size = mpd_put_current_song(mpd.buf);
+                    if (mpd.buf_size > 0)
+                    {
+                        for (struct mg_connection *c = mg_next(s, NULL); c != NULL; c = mg_next(s, c))
+                        {
+                            c->callback_param = NULL;
+                            mpd_notify_callback(c, MG_POLL);
+                        }
+                    }
+                }
+
+                if (old_queue_version != mpd.queue_version)
+                {
+                    mpd.buf_size = snprintf(mpd.buf, MAX_SIZE, "{\"type\":\"update_queue\"}");
+                    for (struct mg_connection *c = mg_next(s, NULL); c != NULL; c = mg_next(s, c))
+                    {
+                        c->callback_param = NULL;
+                        mpd_notify_callback(c, MG_POLL);
+                    }
+                }
             }
             break;
     }
@@ -683,7 +708,11 @@ int mpd_put_browse(char *buffer, char *path, unsigned int offset)
     struct mpd_entity *entity;
     unsigned int entity_count = 0;
 
-    if (!mpd_send_list_meta(mpd.conn, path))
+    const char *mpd_path = path;
+    if (mpd_path == NULL || strcmp(mpd_path, "") == 0 || strcmp(mpd_path, "/") == 0 || strcmp(mpd_path, "root") == 0)
+        mpd_path = NULL;
+
+    if (!mpd_send_list_meta(mpd.conn, mpd_path))
         RETURN_ERROR_AND_RECOVER("mpd_send_list_meta");
 
     cur += json_emit_raw_str(cur, end  - cur, "{\"type\":\"browse\",\"data\":[ ");
