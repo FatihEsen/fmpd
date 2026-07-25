@@ -86,7 +86,9 @@
             <button id="btnsingle" type="button" class="btn-mode-icon" onclick="socket.send('MPD_API_SET_SINGLE,' + ($(this).hasClass('active') ? 0 : 1));" title="Tek Şarkı (y)"><span class="glyphicon glyphicon-refresh"></span></button>
             <button id="btnconsume" type="button" class="btn-mode-icon" onclick="socket.send('MPD_API_SET_CONSUME,' + ($(this).hasClass('active') ? 0 : 1));" title="Tüket (x)"><span class="glyphicon glyphicon-fire"></span></button>
             <button id="btnlove" type="button" class="btn-mode-icon" onclick="clickLove();" title="Favori (Love)"><span class="glyphicon glyphicon-heart"></span></button>
-            <button id="btn-batch-queue-next-mini" type="button" class="btn-mode-icon disabled" disabled onclick="queueNextBatch();" title="Seçilenleri Çalanın Altına Ekle (ö)"><span class="glyphicon glyphicon-step-forward"></span></button>
+            <button id="btn-batch-delete" type="button" onclick="deleteBatch()" class="btn-mode-icon disabled" disabled title="Seçilenleri Sil (d / Delete)"><span class="glyphicon glyphicon-trash"></span></button>
+            <button id="btn-clear-playlist" type="button" class="btn-mode-icon" onclick="if(confirm('Çalma listesi sıfırlansın mı?')) socket.send('MPD_API_RM_ALL');" title="Listeyi Sıfırla / Temizle (c)"><span class="glyphicon glyphicon-remove-circle" style="color: var(--ctp-red);"></span></button>
+            <a href="#" data-toggle="modal" data-target="#savequeue" class="btn-mode-icon" title="Listeyi Kaydet"><span class="glyphicon glyphicon-floppy-disk"></span></a>
           </div>
         </div>
       </div>
@@ -100,49 +102,24 @@
 
         <!-- Player Controls -->
         <div class="controls-row">
+          <button id="btn-batch-move-up" type="button" onclick="moveSelectedUp()" class="btn-icon disabled" disabled title="Seçilenleri Yukarı Taşı (Shift+K)"><span class="glyphicon glyphicon-chevron-up"></span></button>
+          <button id="btn-batch-queue-next" type="button" onclick="queueNextBatch()" class="btn-icon disabled" disabled title="Sıradaki Yap (ö / ⏭)"><span class="glyphicon glyphicon-step-forward"></span></button>
+          <button id="btn-batch-move-down" type="button" onclick="moveSelectedDown()" class="btn-icon disabled" disabled title="Seçilenleri Aşağı Taşı (Shift+J)"><span class="glyphicon glyphicon-chevron-down"></span></button>
           <button type="button" class="btn-icon" onclick="socket.send('MPD_API_SET_PREV');" title="Önceki (B)">⏮</button>
           <button type="button" class="btn-play-main" onclick="clickPlay();" title="Oynat / Duraklat (Space)">
             <span id="play-icon" class="glyphicon glyphicon-play"></span>
           </button>
           <button type="button" class="btn-icon" onclick="socket.send('MPD_API_SET_STOP');" title="Durdur">⏹</button>
           <button type="button" class="btn-icon" onclick="socket.send('MPD_API_SET_NEXT');" title="Sonraki (N)">⏭</button>
-          <button type="button" class="btn-icon btn-expand-mobile" onclick="$('.extra-controls-wrapper').toggleClass('show-mobile');" title="Diğer Kontroller">
-            <span class="glyphicon glyphicon-option-horizontal"></span>
-          </button>
         </div>
       </div>
 
       <div class="extra-controls-wrapper">
         <!-- Volume Row -->
         <div class="volume-row">
-          <span id="volume-icon" style="cursor: pointer;">🔊</span>
+          <span id="volume-icon" class="glyphicon glyphicon-volume-up" style="cursor: pointer;"></span>
           <div id="volumeslider" class="volume-slider"></div>
           <span id="volume-text" class="volume-text">--%</span>
-        </div>
-
-        <!-- Action Toolbar -->
-        <div class="toggles-row">
-          <!-- Icon-Only Batch & Queue Actions Fixed in Footer -->
-          <div class="batch-actions-bar">
-            <button id="btn-batch-move-up" type="button" onclick="moveSelectedUp()" class="btn-track-action disabled" disabled title="Seçilenleri Yukarı Taşı (Shift+K)">
-              <span class="glyphicon glyphicon-chevron-up"></span>
-            </button>
-            <button id="btn-batch-queue-next" type="button" onclick="queueNextBatch()" class="btn-track-action disabled" disabled title="Sıradaki Yap (ö / ⏭)">
-              <span class="glyphicon glyphicon-step-forward"></span>
-            </button>
-            <button id="btn-batch-move-down" type="button" onclick="moveSelectedDown()" class="btn-track-action disabled" disabled title="Seçilenleri Aşağı Taşı (Shift+J)">
-              <span class="glyphicon glyphicon-chevron-down"></span>
-            </button>
-            <button id="btn-batch-delete" type="button" onclick="deleteBatch()" class="btn-track-action disabled" disabled title="Seçilenleri Sil (d / Delete)">
-              <span class="glyphicon glyphicon-trash"></span>
-            </button>
-            <button id="btn-clear-playlist" type="button" class="btn-track-action" onclick="if(confirm('Çalma listesi sıfırlansın mı?')) socket.send('MPD_API_RM_ALL');" title="Listeyi Sıfırla / Temizle (c)">
-              <span class="glyphicon glyphicon-remove-circle" style="color: var(--ctp-red);"></span>
-            </button>
-            <a href="#" data-toggle="modal" data-target="#savequeue" class="btn-track-action" title="Listeyi Kaydet">
-              <span class="glyphicon glyphicon-floppy-disk"></span>
-            </a>
-          </div>
         </div>
       </div>
     </section>
@@ -160,13 +137,6 @@
         </div>
       </div>
 
-      <!-- Playlist Queue Timeline Progress Scrubber Bar -->
-      <div class="queue-timeline-container" style="margin-bottom: 12px;">
-        <div id="seekbar-queue" class="seekbar-track">
-          <div id="seekbar-queue-fill" class="seekbar-fill" style="width: 0%;"></div>
-        </div>
-      </div>
-
       <!-- Directory Breadcrumbs Container -->
       <ol id="breadcrump" class="breadcrumb catppuccin-breadcrumb hide"></ol>
 
@@ -178,7 +148,6 @@
               <th>Sanatçı</th>
               <th>Albüm</th>
               <th class="text-right">Süre</th>
-              <th class="text-right">İşlemler</th>
             </tr>
           </thead>
           <tbody></tbody>

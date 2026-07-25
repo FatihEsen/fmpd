@@ -43,38 +43,55 @@
             options.barColor+"; -webkit-transition:none; transition:none;' />")
             .append("<div class='btn btn-default ' style='position:absolute;height:100%;padding:6px 10px;margin-left:-10px;vertical-align: top'>"));
 
-            self.find('.progress').on('mousedown', function(evt){
+            function getPageX(evt) {
+                var e = evt.originalEvent || evt;
+                if (e.touches && e.touches.length > 0) return e.touches[0].pageX;
+                if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].pageX;
+                return e.pageX;
+            }
+
+            self.find('.progress').on('mousedown touchstart', function(evt){
+                var pageX = getPageX(evt);
                 self.data("dragSlider","true")
-                .data("startPoint",evt.pageX)
-                .data("endPoint",evt.pageX);
+                .data("startPoint", pageX)
+                .data("endPoint", pageX);
 
                 if(!$(evt.target).hasClass("btn")){
-                    self.slider._setWidthFromEvent.call(self,evt.pageX,null,true);
+                    self.slider._setWidthFromEvent.call(self, pageX, null, false);
                 }
                 else{
                     self.data("btnTarget","true");
                 }
 
-                evt.preventDefault();
-                evt.stopPropagation();
+                if (evt.type === 'touchstart') {
+                    evt.stopPropagation();
+                } else {
+                    evt.preventDefault();
+                    evt.stopPropagation();
+                }
             });
 
-            $(window).on('mouseup', function(evt){
+            $(window).on('mouseup touchend touchcancel', function(evt){
                 if(self.data("dragSlider")==="true"){
-                    if(!(self.data("btnTarget") === "true" && self.data("startPoint") === self.data("endPoint") )){
-                        self.slider._setWidthFromEvent.call(self,evt.pageX);
+                    var pageX = getPageX(evt);
+                    if (isNaN(pageX) || pageX === undefined) {
+                        pageX = self.data("endPoint");
                     }
+                    self.slider._setWidthFromEvent.call(self, pageX, null, false);
 
                     self.removeData("dragSlider")
                     .removeData("btnTarget")
                     .removeData("startPoint")
                     .removeData("endPoint");
                 }
-            }).on('mousemove',function(evt){
+            }).on('mousemove touchmove', function(evt){
                 if(self.data("dragSlider")==="true"){
-                    self.slider._setWidthFromEvent.call(self,evt.pageX,null,true);
-                    self.data("endPoint",evt.pageX);
-                    evt.preventDefault();
+                    var pageX = getPageX(evt);
+                    self.slider._setWidthFromEvent.call(self, pageX, null, false);
+                    self.data("endPoint", pageX);
+                    if (evt.type === 'touchmove') {
+                        evt.preventDefault();
+                    }
                 }
             });
 

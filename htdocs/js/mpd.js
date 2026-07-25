@@ -247,23 +247,14 @@ function webSocketConnect() {
                         var seconds = obj.data[song].duration - minutes * 60;
                         var pos1Based = obj.data[song].pos + 1;
 
-                        var upDisabled = (pos1Based === 1) ? 'disabled' : '';
-                        var downDisabled = (pos1Based === totalSongs) ? 'disabled' : '';
-
-                        var actionButtons = "<div class=\"track-action-buttons\">" +
-                            "<button type=\"button\" class=\"btn-track-action btn-play-track\" title=\"Şarkıyı Çal\" onclick=\"event.stopPropagation(); playSingleTrack(" + obj.data[song].id + ");\"><span class=\"glyphicon glyphicon-play\"></span></button>" +
-                            "<button type=\"button\" class=\"btn-track-action btn-move-up\" " + upDisabled + " title=\"Yukarı Taşı\" onclick=\"event.stopPropagation(); moveTrackUp(" + pos1Based + ");\"><span class=\"glyphicon glyphicon-chevron-up\"></span></button>" +
-                            "<button type=\"button\" class=\"btn-track-action btn-move-down\" " + downDisabled + " title=\"Aşağı Taşı\" onclick=\"event.stopPropagation(); moveTrackDown(" + pos1Based + ");\"><span class=\"glyphicon glyphicon-chevron-down\"></span></button>" +
-                            "<button type=\"button\" class=\"btn-track-action btn-trash\" title=\"Sil\" onclick=\"event.stopPropagation(); trash($(this).closest('tr'));\"><span class=\"glyphicon glyphicon-trash\"></span></button>" +
-                            "</div>";
+                        var playBtn = "<button type=\"button\" class=\"btn-track-action btn-play-track\" style=\"margin-right: 8px; flex-shrink: 0;\" title=\"Şarkıyı Çal\" onclick=\"event.stopPropagation(); playSingleTrack(" + obj.data[song].id + ");\"><span class=\"glyphicon glyphicon-play\"></span></button>";
 
                         $('#salamisandwich > tbody').append(
                             "<tr trackid=\"" + obj.data[song].id + "\" data-pos=\"" + pos1Based + "\" class=\"song-row\">" +
-                                "<td class=\"song-title\"><span class=\"glyphicon glyphicon-music\" style=\"color: var(--ctp-green); margin-right: 8px;\"></span>" + obj.data[song].title  + "</td>" +
+                                "<td class=\"song-title\"><div class=\"song-title-wrapper\">" + playBtn + "<span class=\"song-title-text\">" + obj.data[song].title + "</span></div></td>" +
                                 "<td class=\"song-artist\">" + (obj.data[song].artist || '') + "</td>" +
                                 "<td class=\"song-album\">" + (obj.data[song].album  || '') + "</td>" +
                                 "<td class=\"text-right font-mono song-duration-col\">" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds + "</td>" +
-                                "<td class=\"text-right song-actions-cell\">" + actionButtons + "</td>" +
                                 "</tr>");
 
                     }
@@ -1047,10 +1038,10 @@ function updateBatchToolbar() {
     if (selectedCount > 0) {
         $('#batch-count-badge').text(selectedCount + ' seçildi');
         $('#batch-count-indicator').removeClass('hide');
-        $('#btn-batch-queue-next, #btn-batch-queue-next-mini, #btn-batch-delete, #btn-batch-move-up, #btn-batch-move-down').removeClass('disabled').prop('disabled', false);
+        $('#btn-batch-queue-next, #btn-batch-delete, #btn-batch-move-up, #btn-batch-move-down').removeClass('disabled').prop('disabled', false);
     } else {
         $('#batch-count-indicator').addClass('hide');
-        $('#btn-batch-queue-next, #btn-batch-queue-next-mini, #btn-batch-delete, #btn-batch-move-up, #btn-batch-move-down').addClass('disabled').prop('disabled', true);
+        $('#btn-batch-queue-next, #btn-batch-delete, #btn-batch-move-up, #btn-batch-move-down').addClass('disabled').prop('disabled', true);
     }
 }
 
